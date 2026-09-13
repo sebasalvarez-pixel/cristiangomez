@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "peluqueria-dev",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [
+        "-lc",
+        "export PATH=/Users/sebasalvarez/.nvm/versions/node/v24.21.0/bin:$PATH; cd \"/Users/sebasalvarez/AGENDA PELUQUERIA\"; npm run dev"
+      ],
+      "port": 3000
+    }
+  ]
+}
