@@ -4,6 +4,7 @@ import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getAvailableSlots } from "@/lib/availability";
 import { notifyAppointment } from "@/lib/notifications";
+import { utcToBogotaDateIso } from "@/lib/timezone";
 
 const schema = z.object({
   stylistId: z.string().uuid(),
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const totalDuration = services.reduce((sum, s) => sum + s.duration_minutes, 0);
   const start = new Date(startTime);
   const end = new Date(start.getTime() + totalDuration * 60_000);
-  const dateIso = startTime.slice(0, 10);
+  const dateIso = utcToBogotaDateIso(start);
 
   // Re-verificar disponibilidad justo antes de confirmar, para evitar choques por concurrencia.
   const availableSlots = await getAvailableSlots(stylistId, dateIso, totalDuration);
@@ -73,6 +74,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se pudo registrar la clienta" }, { status: 500 });
   }
 
+  // Anti-spam: evita que un mismo celular reserve en cadena (por error o abuso),
+  // lo cual además dispararía varios mensajes de WhatsApp de pago.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: recentCount } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", client.id)
+    .neq("status", "cancelled")
+    .gte("created_at", oneHourAgo);
+
+  if ((recentCount ?? 0) >= 3) {
+    return NextResponse.json(
+      {
+        error:
+          "Ya tienes varias reservas recientes. Si necesitas otra cita, escríbenos directamente por WhatsApp.",
+      },
+      { status: 429 }
+    );
+  }
+
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
@@ -86,7 +107,19 @@ export async function POST(request: Request) {
     .select("id, manage_token")
     .single();
 
-  if (appointmentError || !appointment) {
+  if (appointmentError) {
+    // Choque de horario detectado por la base de datos (dos reservas simultáneas
+    // para el mismo estilista y horario) — el código de exclusion_violation es 23P01.
+    if (appointmentError.code === "23P01") {
+      return NextResponse.json(
+        { error: "Ese horario se acaba de ocupar, elige otro." },
+        { status: 409 }
+      );
+    }
+    return NextResponse.json({ error: "No se pudo crear la cita" }, { status: 500 });
+  }
+
+  if (!appointment) {
     return NextResponse.json({ error: "No se pudo crear la cita" }, { status: 500 });
   }
 

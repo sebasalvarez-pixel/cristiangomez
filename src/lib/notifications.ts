@@ -1,14 +1,13 @@
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { formatBogota } from "@/lib/timezone";
 import type { NotificationType } from "@/lib/types";
 
 const SALON_ADDRESS = "Carrera 19 # 8 -28, Barrio Cálixto, Neiva-Huila";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 function formatDateTime(iso: string) {
-  return format(new Date(iso), "EEEE d 'de' MMMM, h:mm a", { locale: es });
+  return formatBogota(new Date(iso), { withWeekday: true });
 }
 
 interface NotifyArgs {

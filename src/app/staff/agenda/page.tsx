@@ -1,5 +1,6 @@
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { AgendaView } from "@/components/staff/AgendaView";
+import { bogotaDayRangeUtc, utcToBogotaDateIso } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ export default async function AgendaPage({
   searchParams: Promise<{ date?: string; stylist?: string }>;
 }) {
   const { date, stylist: stylistParam } = await searchParams;
-  const dateIso = date ?? new Date().toISOString().slice(0, 10);
+  const dateIso = date ?? utcToBogotaDateIso(new Date());
 
   const auth = await createSupabaseServerClient();
   const {
@@ -45,13 +46,15 @@ export default async function AgendaPage({
 
   const activeStylistId = isAdmin ? stylistParam ?? "all" : ownStylist?.id ?? "";
 
+  const { startIso, endIso } = bogotaDayRangeUtc(dateIso);
+
   let query = supabase
     .from("appointments")
     .select(
       "id, start_time, end_time, status, notes, clients(full_name, phone_e164), stylists(display_name, color), appointment_services(name_at_booking, price_cents_at_booking)"
     )
-    .gte("start_time", `${dateIso}T00:00:00`)
-    .lte("start_time", `${dateIso}T23:59:59`)
+    .gte("start_time", startIso)
+    .lt("start_time", endIso)
     .order("start_time");
 
   if (activeStylistId && activeStylistId !== "all") {
@@ -61,6 +64,11 @@ export default async function AgendaPage({
   }
 
   const { data: appointments } = await query;
+
+  const [{ data: categories }, { data: services }] = await Promise.all([
+    supabase.from("service_categories").select("*").order("sort_order"),
+    supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+  ]);
 
   const normalizedAppointments = (appointments ?? []).map((appt) => {
     const client = Array.isArray(appt.clients) ? appt.clients[0] : appt.clients;
@@ -84,6 +92,8 @@ export default async function AgendaPage({
       stylists={visibleStylists}
       activeStylistId={activeStylistId}
       appointments={normalizedAppointments}
+      categories={categories ?? []}
+      services={services ?? []}
     />
   );
 }

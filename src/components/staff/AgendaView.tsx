@@ -6,6 +6,9 @@ import { addDays, format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/cn";
 import { formatCOP } from "@/lib/types";
+import type { Service, ServiceCategory } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { NewAppointmentForm } from "@/components/staff/NewAppointmentForm";
 
 interface AppointmentRow {
   id: string;
@@ -30,6 +33,8 @@ interface Props {
   stylists: Stylist[];
   activeStylistId: string;
   appointments: AppointmentRow[];
+  categories: ServiceCategory[];
+  services: Service[];
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -40,9 +45,18 @@ const STATUS_LABEL: Record<string, string> = {
   no_show: "No asistió",
 };
 
-export function AgendaView({ dateIso, isAdmin, stylists, activeStylistId, appointments }: Props) {
+export function AgendaView({
+  dateIso,
+  isAdmin,
+  stylists,
+  activeStylistId,
+  appointments,
+  categories,
+  services,
+}: Props) {
   const router = useRouter();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showNewAppointment, setShowNewAppointment] = useState(false);
   const date = new Date(`${dateIso}T00:00:00`);
 
   function goToDate(newDate: Date) {
@@ -78,6 +92,10 @@ export function AgendaView({ dateIso, isAdmin, stylists, activeStylistId, appoin
           ›
         </button>
       </div>
+
+      <Button className="mb-6 w-full sm:w-auto" onClick={() => setShowNewAppointment(true)}>
+        + Nueva cita
+      </Button>
 
       {isAdmin && (
         <div className="mb-6 flex flex-wrap gap-2">
@@ -170,6 +188,21 @@ export function AgendaView({ dateIso, isAdmin, stylists, activeStylistId, appoin
           );
         })}
       </div>
+
+      {showNewAppointment && (
+        <NewAppointmentForm
+          dateIso={dateIso}
+          stylists={stylists}
+          defaultStylistId={activeStylistId}
+          categories={categories}
+          services={services}
+          onClose={() => setShowNewAppointment(false)}
+          onCreated={() => {
+            setShowNewAppointment(false);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

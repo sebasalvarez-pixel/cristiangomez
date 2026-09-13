@@ -1,4 +1,5 @@
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { bogotaDayRangeUtc, bogotaWallClockToUtc, dayOfWeekForDateIso } from "@/lib/timezone";
 
 const SLOT_STEP_MINUTES = 15;
 
@@ -13,7 +14,9 @@ function overlaps(a: Range, b: Range) {
 
 /**
  * Calcula los horarios de inicio disponibles para un estilista en una fecha dada,
- * dado el total de minutos que ocupan los servicios elegidos.
+ * dado el total de minutos que ocupan los servicios elegidos. Todo el cálculo de
+ * horario laboral asume hora de Bogotá (UTC-5), sin importar en qué zona horaria
+ * corra el servidor.
  */
 export async function getAvailableSlots(
   stylistId: string,
@@ -21,8 +24,8 @@ export async function getAvailableSlots(
   totalDurationMinutes: number
 ): Promise<string[]> {
   const supabase = createSupabaseServiceClient();
-  const date = new Date(`${dateIso}T00:00:00`);
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = dayOfWeekForDateIso(dateIso);
+  const { startIso, endIso } = bogotaDayRangeUtc(dateIso);
 
   const [{ data: hours }, { data: timeOff }, { data: existingAppointments }] = await Promise.all([
     supabase
@@ -34,15 +37,15 @@ export async function getAvailableSlots(
       .from("time_off")
       .select("starts_at, ends_at")
       .eq("stylist_id", stylistId)
-      .gte("ends_at", `${dateIso}T00:00:00`)
-      .lte("starts_at", `${dateIso}T23:59:59`),
+      .gte("ends_at", startIso)
+      .lte("starts_at", endIso),
     supabase
       .from("appointments")
       .select("start_time, end_time")
       .eq("stylist_id", stylistId)
       .neq("status", "cancelled")
-      .gte("start_time", `${dateIso}T00:00:00`)
-      .lte("start_time", `${dateIso}T23:59:59`),
+      .gte("start_time", startIso)
+      .lt("start_time", endIso),
   ]);
 
   if (!hours || hours.length === 0) return [];
@@ -59,13 +62,8 @@ export async function getAvailableSlots(
   const slots: string[] = [];
 
   for (const window of hours) {
-    const [startH, startM] = window.start_time.split(":").map(Number);
-    const [endH, endM] = window.end_time.split(":").map(Number);
-
-    const windowStart = new Date(date);
-    windowStart.setHours(startH, startM, 0, 0);
-    const windowEnd = new Date(date);
-    windowEnd.setHours(endH, endM, 0, 0);
+    const windowStart = bogotaWallClockToUtc(dateIso, window.start_time.slice(0, 5));
+    const windowEnd = bogotaWallClockToUtc(dateIso, window.end_time.slice(0, 5));
 
     for (
       let candidate = new Date(windowStart);

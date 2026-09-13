@@ -1,6 +1,7 @@
 -- Christian Gómez Peluquería — esquema inicial
--- Extensión para generar UUIDs y tokens
+-- Extensiones: pgcrypto para UUIDs/tokens, btree_gist para el constraint anti-choques de abajo.
 create extension if not exists "pgcrypto";
+create extension if not exists "btree_gist";
 
 -- Roles del staff
 create type user_role as enum ('admin', 'stylist');
@@ -90,7 +91,14 @@ create table appointments (
   notes text,
   manage_token uuid not null default gen_random_uuid(),
   created_at timestamptz not null default now(),
-  check (end_time > start_time)
+  check (end_time > start_time),
+  -- Último cerrojo contra choques de horario: aunque la app revalide disponibilidad
+  -- antes de insertar, dos reservas simultáneas para el mismo estilista y horario
+  -- no pueden coexistir a nivel de base de datos (se ignoran las citas canceladas).
+  exclude using gist (
+    stylist_id with =,
+    tstzrange(start_time, end_time) with &&
+  ) where (status <> 'cancelled')
 );
 
 create table appointment_services (
