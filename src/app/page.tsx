@@ -1,12 +1,18 @@
+import Image from "next/image";
 import { ButtonLink } from "@/components/ui/Button";
 
 export default function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center">
-        <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-full border border-foreground">
-          <span className="font-display text-2xl italic">CG</span>
-        </div>
+        <Image
+          src="/logo-mark.png"
+          alt="Christian Gómez"
+          width={335}
+          height={257}
+          priority
+          className="mb-8 h-16 w-auto"
+        />
         <p className="mb-3 text-xs uppercase tracking-[0.3em] text-muted">
           Neiva · Huila
         </p>

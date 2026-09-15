@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/cn";
@@ -29,8 +30,8 @@ export function StaffNav({ name, role }: { name: string; role: string }) {
   return (
     <header className="border-b border-border px-4 py-4 sm:px-8">
       <div className="flex items-center justify-between gap-3">
-        <Link href="/staff/agenda" className="font-display shrink-0 text-lg italic">
-          CG
+        <Link href="/staff/agenda" className="shrink-0">
+          <Image src="/logo-mark.png" alt="Christian Gómez" width={335} height={257} className="h-8 w-auto" />
         </Link>
         <div className="flex min-w-0 items-center gap-3 text-xs sm:gap-4 sm:text-sm">
           <span className="hidden truncate text-muted sm:inline">{name}</span>
