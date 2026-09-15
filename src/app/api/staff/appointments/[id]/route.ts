@@ -45,9 +45,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const stylist = Array.isArray(appointment.stylists) ? appointment.stylists[0] : appointment.stylists;
   const isOwner = stylist.profile_id === user.id;
-  const isAdmin = profile?.role === "admin";
+  const canManageAny = profile?.role === "admin" || profile?.role === "reception";
 
-  if (!isAdmin && !isOwner) {
+  if (!canManageAny && !isOwner) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 

@@ -27,6 +27,9 @@ export default async function AgendaPage({
     .single();
 
   const isAdmin = profile?.role === "admin";
+  // Recepción ve y gestiona la agenda de todos, igual que admin, pero no puede
+  // tocar servicios/precios ni configuración de estilistas (eso sigue solo para admin).
+  const canSeeAllStylists = isAdmin || profile?.role === "reception";
 
   const { data: allStylists } = await supabase
     .from("stylists")
@@ -40,11 +43,11 @@ export default async function AgendaPage({
     .eq("profile_id", user.id)
     .maybeSingle();
 
-  const visibleStylists = isAdmin
+  const visibleStylists = canSeeAllStylists
     ? allStylists ?? []
     : (allStylists ?? []).filter((s) => s.id === ownStylist?.id);
 
-  const activeStylistId = isAdmin ? stylistParam ?? "all" : ownStylist?.id ?? "";
+  const activeStylistId = canSeeAllStylists ? stylistParam ?? "all" : ownStylist?.id ?? "";
 
   const { startIso, endIso } = bogotaDayRangeUtc(dateIso);
 
@@ -59,7 +62,7 @@ export default async function AgendaPage({
 
   if (activeStylistId && activeStylistId !== "all") {
     query = query.eq("stylist_id", activeStylistId);
-  } else if (!isAdmin) {
+  } else if (!canSeeAllStylists) {
     query = query.eq("stylist_id", ownStylist?.id ?? "00000000-0000-0000-0000-000000000000");
   }
 
@@ -88,7 +91,7 @@ export default async function AgendaPage({
   return (
     <AgendaView
       dateIso={dateIso}
-      isAdmin={isAdmin}
+      isAdmin={canSeeAllStylists}
       stylists={visibleStylists}
       activeStylistId={activeStylistId}
       appointments={normalizedAppointments}

@@ -51,6 +51,9 @@ export function StaffNav({ name, role }: { name: string; role: string }) {
       </div>
       <div className="flex items-center gap-4 text-sm">
         <span className="hidden text-muted sm:inline">{name}</span>
+        <Link href="/staff/cuenta" className="text-xs underline underline-offset-4">
+          Mi cuenta
+        </Link>
         <button onClick={handleLogout} className="text-xs underline underline-offset-4">
           Salir
         </button>

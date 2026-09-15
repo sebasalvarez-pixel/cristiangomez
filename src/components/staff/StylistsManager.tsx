@@ -21,6 +21,7 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [editingPhone, setEditingPhone] = useState<string | null>(null);
   const [editingTimeOff, setEditingTimeOff] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState<string | null>(null);
 
   async function toggleActive(id: string, isActive: boolean) {
     await fetch(`/api/staff/stylists/${id}`, {
@@ -55,6 +56,12 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
             <div className="flex shrink-0 flex-wrap justify-end gap-3">
               <button
                 className="text-xs underline underline-offset-4"
+                onClick={() => setEditingProfile(editingProfile === stylist.id ? null : stylist.id)}
+              >
+                Editar
+              </button>
+              <button
+                className="text-xs underline underline-offset-4"
                 onClick={() => setEditingPhone(editingPhone === stylist.id ? null : stylist.id)}
               >
                 WhatsApp
@@ -79,6 +86,18 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
               </button>
             </div>
           </div>
+
+          {editingProfile === stylist.id && (
+            <ProfileEditor
+              stylistId={stylist.id}
+              initialName={stylist.display_name}
+              initialColor={stylist.color}
+              onSaved={() => {
+                setEditingProfile(null);
+                router.refresh();
+              }}
+            />
+          )}
 
           {editingPhone === stylist.id && (
             <PhoneEditor
@@ -108,6 +127,79 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+const COLOR_OPTIONS = ["#111111", "#2b2b2b", "#4a4a4a", "#6b6b6b", "#8a6b4a", "#4a6b8a"];
+
+function ProfileEditor({
+  stylistId,
+  initialName,
+  initialColor,
+  onSaved,
+}: {
+  stylistId: string;
+  initialName: string;
+  initialColor: string;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(initialName);
+  const [color, setColor] = useState(initialColor);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (name.trim().length < 2) {
+      setError("El nombre es muy corto");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/staff/stylists/${stylistId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName: name.trim(), color }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setError("No se pudo guardar");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="space-y-3 border-t border-border px-5 py-4">
+      <div>
+        <label className="mb-1 block text-xs text-muted">Nombre</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-foreground"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs text-muted">Color en la agenda</label>
+        <div className="flex gap-2">
+          {COLOR_OPTIONS.map((c) => (
+            <button
+              key={c}
+              onClick={() => setColor(c)}
+              aria-label={c}
+              className={cn(
+                "h-7 w-7 rounded-full",
+                color === c && "ring-2 ring-offset-2 ring-foreground"
+              )}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <Button disabled={saving} onClick={save}>
+        {saving ? "Guardando…" : "Guardar"}
+      </Button>
     </div>
   );
 }
