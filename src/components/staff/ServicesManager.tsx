@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
+import { ChipButton } from "@/components/staff/StylistsManager";
 
 interface Props {
   categories: ServiceCategory[];
@@ -67,14 +68,14 @@ export function ServicesManager({ categories, services }: Props) {
         <div key={category.id} className="rounded-2xl border border-border">
           <div className="flex items-center justify-between px-5 py-4">
             <p className="font-medium">{category.name}</p>
-            <button
-              className="text-xs underline underline-offset-4"
+            <ChipButton
+              active={addingServiceFor === category.id}
               onClick={() =>
                 setAddingServiceFor(addingServiceFor === category.id ? null : category.id)
               }
             >
               + Servicio
-            </button>
+            </ChipButton>
           </div>
 
           <div className="divide-y divide-border border-t border-border">
@@ -90,12 +91,9 @@ export function ServicesManager({ categories, services }: Props) {
                       {formatDuration(service.duration_minutes)} · {formatCOP(service.price_cents)}
                     </p>
                   </div>
-                  <button
-                    className="text-xs underline underline-offset-4"
-                    onClick={() => toggleActive(service.id, service.is_active)}
-                  >
+                  <ChipButton onClick={() => toggleActive(service.id, service.is_active)}>
                     {service.is_active ? "Desactivar" : "Activar"}
-                  </button>
+                  </ChipButton>
                 </div>
               ))}
           </div>

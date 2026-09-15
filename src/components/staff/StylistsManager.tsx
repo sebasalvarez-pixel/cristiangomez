@@ -53,37 +53,34 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3 sm:shrink-0 sm:justify-end">
-              <button
-                className="text-xs underline underline-offset-4"
+            <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
+              <ChipButton
+                active={editingProfile === stylist.id}
                 onClick={() => setEditingProfile(editingProfile === stylist.id ? null : stylist.id)}
               >
                 Editar
-              </button>
-              <button
-                className="text-xs underline underline-offset-4"
+              </ChipButton>
+              <ChipButton
+                active={editingPhone === stylist.id}
                 onClick={() => setEditingPhone(editingPhone === stylist.id ? null : stylist.id)}
               >
                 WhatsApp
-              </button>
-              <button
-                className="text-xs underline underline-offset-4"
+              </ChipButton>
+              <ChipButton
+                active={expanded === stylist.id}
                 onClick={() => setExpanded(expanded === stylist.id ? null : stylist.id)}
               >
                 Horario
-              </button>
-              <button
-                className="text-xs underline underline-offset-4"
+              </ChipButton>
+              <ChipButton
+                active={editingTimeOff === stylist.id}
                 onClick={() => setEditingTimeOff(editingTimeOff === stylist.id ? null : stylist.id)}
               >
                 Bloqueos
-              </button>
-              <button
-                className="text-xs underline underline-offset-4"
-                onClick={() => toggleActive(stylist.id, stylist.is_active)}
-              >
+              </ChipButton>
+              <ChipButton onClick={() => toggleActive(stylist.id, stylist.is_active)}>
                 {stylist.is_active ? "Desactivar" : "Activar"}
-              </button>
+              </ChipButton>
             </div>
           </div>
 
@@ -451,5 +448,27 @@ function TimeOffEditor({
         {saving ? "Guardando…" : "Bloquear fechas"}
       </Button>
     </div>
+  );
+}
+
+export function ChipButton({
+  children,
+  onClick,
+  active,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-xs font-medium",
+        active ? "border-foreground bg-foreground text-background" : "border-border"
+      )}
+    >
+      {children}
+    </button>
   );
 }

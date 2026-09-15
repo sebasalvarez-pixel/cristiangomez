@@ -124,24 +124,42 @@ export function AgendaView({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-4 flex items-center justify-between">
-        <button onClick={goPrev} className="px-2 text-lg">
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <button
+          onClick={goPrev}
+          aria-label="Anterior"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-xl"
+        >
           ‹
         </button>
-        <h1 className="font-display text-lg italic sm:text-xl">{headerLabel}</h1>
-        <button onClick={goNext} className="px-2 text-lg">
+        <div className="flex flex-col items-center gap-1.5">
+          <h1 className="font-display text-center text-lg italic sm:text-xl">{headerLabel}</h1>
+          {dateIso !== todayIso && (
+            <button
+              onClick={() => goTo(todayIso)}
+              className="rounded-full border border-foreground px-3 py-1 text-xs font-medium"
+            >
+              Hoy
+            </button>
+          )}
+        </div>
+        <button
+          onClick={goNext}
+          aria-label="Siguiente"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-xl"
+        >
           ›
         </button>
       </div>
 
-      <div className="mb-6 flex justify-center gap-2">
+      <div className="mb-6 grid grid-cols-3 gap-2 rounded-full border border-border p-1">
         {(["day", "week", "month"] as ViewMode[]).map((mode) => (
           <button
             key={mode}
             onClick={() => goTo(dateIso, mode)}
             className={cn(
-              "rounded-full border px-4 py-1.5 text-xs",
-              view === mode ? "border-foreground bg-foreground text-background" : "border-border"
+              "rounded-full py-2 text-sm font-medium",
+              view === mode ? "bg-foreground text-background" : "text-muted"
             )}
           >
             {mode === "day" ? "Día" : mode === "week" ? "Semana" : "Mes"}
@@ -154,28 +172,35 @@ export function AgendaView({
       </Button>
 
       {isAdmin && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => goToStylist("all")}
-            className={cn(
-              "rounded-full border px-4 py-1.5 text-xs",
-              activeStylistId === "all" ? "border-foreground bg-foreground text-background" : "border-border"
-            )}
-          >
-            Todos
-          </button>
-          {stylists.map((s) => (
+        <div className="mb-6">
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted">Estilista</p>
+          <div className="flex flex-wrap gap-2">
             <button
-              key={s.id}
-              onClick={() => goToStylist(s.id)}
+              onClick={() => goToStylist("all")}
               className={cn(
-                "rounded-full border px-4 py-1.5 text-xs",
-                activeStylistId === s.id ? "border-foreground bg-foreground text-background" : "border-border"
+                "rounded-full border px-4 py-2 text-sm",
+                activeStylistId === "all" ? "border-foreground bg-foreground text-background" : "border-border"
               )}
             >
-              {s.display_name}
+              Todos
             </button>
-          ))}
+            {stylists.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => goToStylist(s.id)}
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-4 py-2 text-sm",
+                  activeStylistId === s.id ? "border-foreground bg-foreground text-background" : "border-border"
+                )}
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: activeStylistId === s.id ? "currentColor" : s.color }}
+                />
+                {s.display_name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -414,7 +439,14 @@ function MonthAgenda({
             >
               <span>{dayNumber}</span>
               {count > 0 && (
-                <span className="flex h-1.5 w-1.5 rounded-full bg-foreground" aria-label={`${count} citas`} />
+                <span
+                  className={cn(
+                    "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium",
+                    isToday ? "bg-foreground text-background" : "bg-muted-bg text-foreground"
+                  )}
+                >
+                  {count}
+                </span>
               )}
             </button>
           );

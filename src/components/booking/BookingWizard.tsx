@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addDays, format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
 import type { PublicStylist, Service, ServiceCategory } from "@/lib/types";
+import { DatePicker } from "@/components/booking/DatePicker";
+import { utcToBogotaDateIso } from "@/lib/timezone";
 
 interface StylistService {
   stylist_id: string;
@@ -32,7 +34,8 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
   const [openCategory, setOpenCategory] = useState<string | null>(categories[0]?.id ?? null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [stylistId, setStylistId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const todayIso = utcToBogotaDateIso(new Date());
+  const [selectedDateIso, setSelectedDateIso] = useState<string>(todayIso);
   const [slots, setSlots] = useState<{ time: string; stylistId: string }[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ time: string; stylistId: string } | null>(null);
@@ -67,10 +70,9 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
     );
   }
 
-  async function loadSlots(date: Date, stylistChoice: string) {
+  async function loadSlots(dateIso: string, stylistChoice: string) {
     setLoadingSlots(true);
     setSelectedSlot(null);
-    const dateIso = format(date, "yyyy-MM-dd");
     const candidates = stylistChoice === ANY_STYLIST ? eligibleStylists() : eligibleStylists().filter((s) => s.id === stylistChoice);
 
     const results = await Promise.all(
@@ -104,12 +106,12 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
   async function handlePickStylist(id: string) {
     setStylistId(id);
     setStep("datetime");
-    await loadSlots(selectedDate, id);
+    await loadSlots(selectedDateIso, id);
   }
 
-  async function handlePickDate(date: Date) {
-    setSelectedDate(date);
-    if (stylistId) await loadSlots(date, stylistId);
+  async function handlePickDate(dateIso: string) {
+    setSelectedDateIso(dateIso);
+    if (stylistId) await loadSlots(dateIso, stylistId);
   }
 
   async function handleConfirm() {
@@ -142,8 +144,6 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
       setSubmitting(false);
     }
   }
-
-  const next14Days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
   function goBack() {
     if (step === "done") return;
@@ -264,26 +264,13 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
 
       {step === "datetime" && (
         <div>
-          <div className="flex gap-2 overflow-x-auto pb-3">
-            {next14Days.map((date) => {
-              const active = isSameDay(date, selectedDate);
-              return (
-                <button
-                  key={date.toISOString()}
-                  onClick={() => handlePickDate(date)}
-                  className={cn(
-                    "flex min-w-16 flex-col items-center rounded-xl border px-3 py-2 text-xs",
-                    active ? "border-foreground bg-foreground text-background" : "border-border"
-                  )}
-                >
-                  <span className="uppercase">{format(date, "EEE", { locale: es })}</span>
-                  <span className="mt-1 text-base font-medium">{format(date, "d")}</span>
-                </button>
-              );
-            })}
-          </div>
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted">1. Elige el día</p>
+          <DatePicker selectedDateIso={selectedDateIso} todayIso={todayIso} onSelect={handlePickDate} />
 
-          <div className="mt-5 grid grid-cols-3 gap-2">
+          <p className="mt-6 mb-2 text-xs uppercase tracking-wide text-muted">
+            2. Elige la hora — {format(new Date(`${selectedDateIso}T00:00:00`), "EEEE d 'de' MMMM", { locale: es })}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
             {loadingSlots && <p className="col-span-3 text-center text-sm text-muted">Buscando horarios…</p>}
             {!loadingSlots && slots.length === 0 && (
               <p className="col-span-3 text-center text-sm text-muted">
