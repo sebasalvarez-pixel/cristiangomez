@@ -21,10 +21,13 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseServiceClient();
 
-  const statuses =
-    body.entry?.flatMap((entry: any) =>
-      entry.changes?.flatMap((change: any) => change.value?.statuses ?? [])
-    ) ?? [];
+  interface StatusChange {
+    changes?: { value?: { statuses?: { id: string; status: string }[] } }[];
+  }
+  const entries = (body as { entry?: StatusChange[] }).entry ?? [];
+  const statuses = entries.flatMap(
+    (entry) => entry.changes?.flatMap((change) => change.value?.statuses ?? []) ?? []
+  );
 
   for (const status of statuses) {
     if (!status?.id || !status?.status) continue;

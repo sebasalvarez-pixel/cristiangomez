@@ -25,28 +25,26 @@ export default async function AgendaPage({
 
   const supabase = createSupabaseServiceClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  // Todas estas consultas son independientes entre sí (solo dependen de user.id, ya
+  // resuelto arriba), así que van en paralelo en vez de una tras otra.
+  const [
+    { data: profile },
+    { data: allStylists },
+    { data: ownStylist },
+    { data: categories },
+    { data: services },
+  ] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+    supabase.from("stylists").select("*").eq("is_active", true).order("sort_order"),
+    supabase.from("stylists").select("id").eq("profile_id", user.id).maybeSingle(),
+    supabase.from("service_categories").select("*").order("sort_order"),
+    supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+  ]);
 
   const isAdmin = profile?.role === "admin";
   // Recepción ve y gestiona la agenda de todos, igual que admin, pero no puede
   // tocar servicios/precios ni configuración de estilistas (eso sigue solo para admin).
   const canSeeAllStylists = isAdmin || profile?.role === "reception";
-
-  const { data: allStylists } = await supabase
-    .from("stylists")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order");
-
-  const { data: ownStylist } = await supabase
-    .from("stylists")
-    .select("id")
-    .eq("profile_id", user.id)
-    .maybeSingle();
 
   const visibleStylists = canSeeAllStylists
     ? allStylists ?? []
@@ -88,10 +86,26 @@ export default async function AgendaPage({
 
   const { data: appointments } = await query;
 
-  const [{ data: categories }, { data: services }] = await Promise.all([
-    supabase.from("service_categories").select("*").order("sort_order"),
-    supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
-  ]);
+  // En vista Día, si hoy está vacío no queremos que parezca que no hay nada agendado
+  // en general — avisamos cuántas citas hay en los próximos 7 días (fuera de hoy).
+  let upcomingCount = 0;
+  if (view === "day") {
+    // rangeEndIso ya es el inicio de "mañana" en Bogotá (límite exclusivo del día de hoy).
+    const weekAhead = new Date(new Date(rangeEndIso).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    let upcomingQuery = supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .gte("start_time", rangeEndIso)
+      .lt("start_time", weekAhead)
+      .neq("status", "cancelled");
+    if (activeStylistId && activeStylistId !== "all") {
+      upcomingQuery = upcomingQuery.eq("stylist_id", activeStylistId);
+    } else if (!canSeeAllStylists) {
+      upcomingQuery = upcomingQuery.eq("stylist_id", ownStylist?.id ?? "00000000-0000-0000-0000-000000000000");
+    }
+    const { count } = await upcomingQuery;
+    upcomingCount = count ?? 0;
+  }
 
   const normalizedAppointments = (appointments ?? []).map((appt) => {
     const client = Array.isArray(appt.clients) ? appt.clients[0] : appt.clients;
@@ -116,6 +130,7 @@ export default async function AgendaPage({
       stylists={visibleStylists}
       activeStylistId={activeStylistId}
       appointments={normalizedAppointments}
+      upcomingCount={upcomingCount}
       categories={categories ?? []}
       services={services ?? []}
     />

@@ -38,6 +38,7 @@ interface Props {
   stylists: Stylist[];
   activeStylistId: string;
   appointments: AppointmentRow[];
+  upcomingCount?: number;
   categories: ServiceCategory[];
   services: Service[];
 }
@@ -57,13 +58,14 @@ export function AgendaView({
   stylists,
   activeStylistId,
   appointments,
+  upcomingCount = 0,
   categories,
   services,
 }: Props) {
   const router = useRouter();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
-  const date = new Date(`${dateIso}T00:00:00`);
+  const date = useMemo(() => new Date(`${dateIso}T00:00:00`), [dateIso]);
   const todayIso = utcToBogotaDateIso(new Date());
 
   const stylistQuery = activeStylistId && activeStylistId !== "all" ? `&stylist=${activeStylistId}` : "";
@@ -202,6 +204,20 @@ export function AgendaView({
             ))}
           </div>
         </div>
+      )}
+
+      {view === "day" && upcomingCount > 0 && (
+        <button
+          onClick={() => goTo(dateIso, "week")}
+          className="mb-4 flex w-full items-center justify-between rounded-2xl bg-muted-bg px-5 py-3 text-left text-sm"
+        >
+          <span>
+            Tienes <span className="font-medium">{upcomingCount}</span> cita
+            {upcomingCount === 1 ? "" : "s"} programada{upcomingCount === 1 ? "" : "s"} en los
+            próximos 7 días
+          </span>
+          <span className="shrink-0 underline underline-offset-4">Ver semana</span>
+        </button>
       )}
 
       {view === "day" && (
