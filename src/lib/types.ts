@@ -11,7 +11,8 @@ export type NotificationType =
   | "confirmation"
   | "reminder_24h"
   | "reminder_2h"
-  | "cancellation";
+  | "cancellation"
+  | "new_booking_stylist";
 
 export interface ServiceCategory {
   id: string;
@@ -36,9 +37,16 @@ export interface Stylist {
   display_name: string;
   avatar_url: string | null;
   color: string;
+  phone_e164: string | null;
   is_active: boolean;
   sort_order: number;
 }
+
+/** Subconjunto seguro para exponer en páginas públicas (sin profile_id ni el WhatsApp del estilista). */
+export type PublicStylist = Pick<
+  Stylist,
+  "id" | "display_name" | "avatar_url" | "color" | "is_active" | "sort_order"
+>;
 
 export interface BusinessHour {
   id: string;

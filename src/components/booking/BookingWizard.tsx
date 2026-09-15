@@ -7,7 +7,7 @@ import { es } from "date-fns/locale";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
-import type { Service, ServiceCategory, Stylist } from "@/lib/types";
+import type { PublicStylist, Service, ServiceCategory } from "@/lib/types";
 
 interface StylistService {
   stylist_id: string;
@@ -17,7 +17,7 @@ interface StylistService {
 interface Props {
   categories: ServiceCategory[];
   services: Service[];
-  stylists: Stylist[];
+  stylists: PublicStylist[];
   stylistServices: StylistService[];
 }
 
@@ -49,7 +49,7 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration_minutes, 0);
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price_cents, 0);
 
-  function eligibleStylists(): Stylist[] {
+  function eligibleStylists(): PublicStylist[] {
     return stylists.filter((stylist) =>
       selectedServiceIds.every((serviceId) => {
         const restricted = stylistServices.some((ss) => ss.service_id === serviceId);

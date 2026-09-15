@@ -3,7 +3,7 @@ import { z } from "zod";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getAvailableSlots } from "@/lib/availability";
-import { notifyAppointment } from "@/lib/notifications";
+import { notifyAppointment, notifyStylistNewBooking } from "@/lib/notifications";
 import { utcToBogotaDateIso } from "@/lib/timezone";
 
 const schema = z.object({
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   const { data: stylist } = await supabase
     .from("stylists")
-    .select("display_name")
+    .select("display_name, phone_e164")
     .eq("id", stylistId)
     .single();
 
@@ -143,6 +143,17 @@ export async function POST(request: Request) {
     startTimeIso: start.toISOString(),
     manageToken: appointment.manage_token,
   });
+
+  if (stylist.phone_e164) {
+    await notifyStylistNewBooking({
+      appointmentId: appointment.id,
+      stylistPhoneE164: stylist.phone_e164,
+      stylistName: stylist.display_name,
+      clientName,
+      serviceNames: services.map((s) => s.name),
+      startTimeIso: start.toISOString(),
+    });
+  }
 
   return NextResponse.json({
     appointmentId: appointment.id,

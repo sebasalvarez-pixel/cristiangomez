@@ -9,6 +9,7 @@ El código ya está listo y probado (build + UI). Falta conectar 3 cosas que sol
    - `supabase/migrations/0001_init.sql`
    - `supabase/migrations/0002_seed.sql`
    - `supabase/migrations/0003_real_services.sql` (catálogo real de servicios, tomado del sistema anterior)
+   - `supabase/migrations/0004_stylist_whatsapp.sql` (agrega el número de WhatsApp de cada estilista, para avisarles de citas nuevas)
 3. En **Project Settings → API**, copia:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -50,6 +51,11 @@ El código ya está listo y probado (build + UI). Falta conectar 3 cosas que sol
    Si fue un error, contáctanos.
    ```
 
+   **`nueva_cita_estilista`** (esta le llega al estilista, no a la clienta)
+   ```
+   Hola {{1}}, tienes una cita nueva: {{3}} con {{2}}, el {{4}}.
+   ```
+
    Importante: respeta el orden y cantidad de variables tal cual, porque el código las llena en ese orden exacto (ver `src/lib/notifications.ts`).
 
 5. Inventa un texto secreto para `WHATSAPP_VERIFY_TOKEN` (cualquier string), y en **WhatsApp Manager → Configuration → Webhook**, apunta la URL a `https://tu-dominio.vercel.app/api/whatsapp/webhook` usando ese mismo texto como "Verify token".
@@ -69,7 +75,7 @@ Copia `.env.example` a `.env.local` (desarrollo) y carga las mismas variables en
 
 - Entra a `/staff/login` con el usuario de Christian (rol admin).
 - En **Servicios**, ya está cargado el catálogo completo (nombres y duraciones reales, tomados del sistema anterior). Los precios quedaron en 0 ("Cotizar") porque así los manejaban antes — si quieren precios fijos, edítenlos ahí mismo.
-- En **Estilistas**, ajusta el horario laboral real de cada quien (por defecto: martes a sábado, 9am-7pm).
+- En **Estilistas**, ajusta el horario laboral real de cada quien (por defecto: martes a sábado, 9am-7pm) y carga el número de WhatsApp de cada uno (botón "WhatsApp" en su fila) — sin ese número, esa persona no recibe el aviso automático de citas nuevas.
 - Comparte el link `/reservar` con las clientas (o ponlo como botón en redes sociales / WhatsApp Business).
 
 ## Ícono y detalles de marca

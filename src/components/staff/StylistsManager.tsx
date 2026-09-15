@@ -16,6 +16,7 @@ interface Props {
 export function StylistsManager({ stylists, hours }: Props) {
   const router = useRouter();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingPhone, setEditingPhone] = useState<string | null>(null);
 
   async function toggleActive(id: string, isActive: boolean) {
     await fetch(`/api/staff/stylists/${id}`, {
@@ -38,11 +39,22 @@ export function StylistsManager({ stylists, hours }: Props) {
               >
                 {stylist.display_name.charAt(0)}
               </div>
-              <p className={cn("text-sm font-medium", !stylist.is_active && "text-muted line-through")}>
-                {stylist.display_name}
-              </p>
+              <div>
+                <p className={cn("text-sm font-medium", !stylist.is_active && "text-muted line-through")}>
+                  {stylist.display_name}
+                </p>
+                <p className="text-xs text-muted">
+                  {stylist.phone_e164 ?? "Sin WhatsApp — no recibirá avisos de citas nuevas"}
+                </p>
+              </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex shrink-0 gap-3">
+              <button
+                className="text-xs underline underline-offset-4"
+                onClick={() => setEditingPhone(editingPhone === stylist.id ? null : stylist.id)}
+              >
+                WhatsApp
+              </button>
               <button
                 className="text-xs underline underline-offset-4"
                 onClick={() => setExpanded(expanded === stylist.id ? null : stylist.id)}
@@ -58,6 +70,17 @@ export function StylistsManager({ stylists, hours }: Props) {
             </div>
           </div>
 
+          {editingPhone === stylist.id && (
+            <PhoneEditor
+              stylistId={stylist.id}
+              initialPhone={stylist.phone_e164}
+              onSaved={() => {
+                setEditingPhone(null);
+                router.refresh();
+              }}
+            />
+          )}
+
           {expanded === stylist.id && (
             <HoursEditor
               stylistId={stylist.id}
@@ -67,6 +90,57 @@ export function StylistsManager({ stylists, hours }: Props) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function PhoneEditor({
+  stylistId,
+  initialPhone,
+  onSaved,
+}: {
+  stylistId: string;
+  initialPhone: string | null;
+  onSaved: () => void;
+}) {
+  const [phone, setPhone] = useState(initialPhone ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/staff/stylists/${stylistId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phoneE164: phone }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "No se pudo guardar");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="space-y-2 border-t border-border px-5 py-4">
+      <p className="text-xs text-muted">
+        Número de WhatsApp donde le van a llegar los avisos de citas nuevas.
+      </p>
+      <div className="flex gap-2">
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="300 123 4567"
+          className="flex-1 rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-foreground"
+        />
+        <Button disabled={saving} onClick={save}>
+          {saving ? "Guardando…" : "Guardar"}
+        </Button>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
   );
 }

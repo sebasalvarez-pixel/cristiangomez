@@ -26,6 +26,7 @@ const TEMPLATE_BY_TYPE: Record<NotificationType, string> = {
   reminder_24h: "recordatorio_cita",
   reminder_2h: "recordatorio_cita",
   cancellation: "cita_cancelada",
+  new_booking_stylist: "nueva_cita_estilista",
 };
 
 export async function notifyAppointment(args: NotifyArgs) {
@@ -48,6 +49,38 @@ export async function notifyAppointment(args: NotifyArgs) {
   await supabase.from("notification_log").insert({
     appointment_id: args.appointmentId,
     type: args.type,
+    status: result.ok ? "sent" : "failed",
+    whatsapp_message_id: result.messageId ?? null,
+    error: result.error ?? null,
+  });
+
+  return result;
+}
+
+interface NotifyStylistArgs {
+  appointmentId: string;
+  stylistPhoneE164: string;
+  stylistName: string;
+  clientName: string;
+  serviceNames: string[];
+  startTimeIso: string;
+}
+
+/** Avisa por WhatsApp al estilista cuando le cae una cita nueva (aparte del recordatorio a la clienta). */
+export async function notifyStylistNewBooking(args: NotifyStylistArgs) {
+  const supabase = createSupabaseServiceClient();
+  const when = formatDateTime(args.startTimeIso);
+  const servicesText = args.serviceNames.join(", ");
+
+  const result = await sendWhatsAppTemplate({
+    to: args.stylistPhoneE164,
+    template: TEMPLATE_BY_TYPE.new_booking_stylist,
+    bodyParams: [args.stylistName, args.clientName, servicesText, when],
+  });
+
+  await supabase.from("notification_log").insert({
+    appointment_id: args.appointmentId,
+    type: "new_booking_stylist",
     status: result.ok ? "sent" : "failed",
     whatsapp_message_id: result.messageId ?? null,
     error: result.error ?? null,
