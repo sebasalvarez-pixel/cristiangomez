@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
+import { DatePicker } from "@/components/booking/DatePicker";
+import { utcToBogotaDateIso } from "@/lib/timezone";
 
 interface Stylist {
   id: string;
@@ -31,6 +34,8 @@ export function NewAppointmentForm({
   onClose,
   onCreated,
 }: Props) {
+  const todayIso = utcToBogotaDateIso(new Date());
+  const [selectedDateIso, setSelectedDateIso] = useState(dateIso < todayIso ? todayIso : dateIso);
   const [stylistId, setStylistId] = useState(defaultStylistId && defaultStylistId !== "all" ? defaultStylistId : "");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
@@ -58,23 +63,30 @@ export function NewAppointmentForm({
     setSlots([]);
   }
 
-  async function loadSlots(currentStylistId: string) {
+  async function loadSlots(currentStylistId: string, currentDateIso: string) {
     if (!currentStylistId || totalDuration === 0) return;
     setLoadingSlots(true);
     setSelectedSlot(null);
     const res = await fetch("/api/availability", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stylistId: currentStylistId, date: dateIso, totalDurationMinutes: totalDuration }),
+      body: JSON.stringify({ stylistId: currentStylistId, date: currentDateIso, totalDurationMinutes: totalDuration }),
     });
     const data = await res.json();
     setSlots(res.ok ? data.slots : []);
     setLoadingSlots(false);
   }
 
+  function handlePickDate(newDateIso: string) {
+    setSelectedDateIso(newDateIso);
+    setSlots([]);
+    setSelectedSlot(null);
+    if (stylistId && totalDuration > 0) loadSlots(stylistId, newDateIso);
+  }
+
   function handlePickStylist(id: string) {
     setStylistId(id);
-    if (totalDuration > 0) loadSlots(id);
+    if (totalDuration > 0) loadSlots(id, selectedDateIso);
   }
 
   async function handleSubmit() {
@@ -128,6 +140,14 @@ export function NewAppointmentForm({
           ))}
         </div>
 
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Fecha</p>
+        <div className="mb-4">
+          <DatePicker selectedDateIso={selectedDateIso} todayIso={todayIso} onSelect={handlePickDate} />
+          <p className="mt-2 text-center text-xs text-muted">
+            {format(new Date(`${selectedDateIso}T00:00:00`), "EEEE d 'de' MMMM", { locale: es })}
+          </p>
+        </div>
+
         <p className="mb-2 text-xs uppercase tracking-wide text-muted">Servicios</p>
         <div className="mb-4 max-h-40 space-y-3 overflow-y-auto rounded-xl border border-border p-3">
           {categories.map((category) => {
@@ -155,7 +175,7 @@ export function NewAppointmentForm({
         {stylistId && totalDuration > 0 && slots.length === 0 && !loadingSlots && (
           <button
             className="mb-4 text-xs underline underline-offset-4"
-            onClick={() => loadSlots(stylistId)}
+            onClick={() => loadSlots(stylistId, selectedDateIso)}
           >
             Buscar horarios disponibles
           </button>
