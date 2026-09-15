@@ -57,6 +57,20 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col">
+      {/*
+        Video hero horizontal (16:9), a todo el ancho. En cuanto tengan el archivo,
+        reemplazar este div por:
+        <video className="h-full w-full object-cover" autoPlay muted loop playsInline poster="/video-poster.jpg">
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+      */}
+      <div className="relative flex aspect-video w-full items-center justify-center bg-muted-bg sm:aspect-[21/9]">
+        <div className="flex flex-col items-center gap-2 opacity-40">
+          <Image src="/logo-mark.png" alt="" width={335} height={257} className="h-10 w-auto" />
+          <p className="text-xs uppercase tracking-[0.3em] text-muted">Video próximamente</p>
+        </div>
+      </div>
+
       <main className="flex flex-1 flex-col items-center px-6 py-20 text-center">
         <Image
           src="/logo-mark.png"
