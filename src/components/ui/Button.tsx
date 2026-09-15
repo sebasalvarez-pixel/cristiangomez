@@ -26,12 +26,26 @@ export function ButtonLink({
   variant = "primary",
   className,
   children,
+  external,
 }: {
   href: string;
   variant?: Variant;
   className?: string;
   children: React.ReactNode;
+  external?: boolean;
 }) {
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(base, variants[variant], className)}
+      >
+        {children}
+      </a>
+    );
+  }
   return (
     <Link href={href} className={cn(base, variants[variant], className)}>
       {children}

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { formatDuration } from "@/lib/types";
@@ -6,10 +7,16 @@ import { formatDuration } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 const DAY_LABELS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const WHATSAPP_NUMBER = "573102380195";
+const WHATSAPP_MESSAGE = "Hola Christian, quiero una asesoría para ";
+const WHATSAPP_HREF = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
+const MAPS_DESTINATION = "2.9317351,-75.2769501";
+const DIRECTIONS_HREF = `https://www.google.com/maps/dir/?api=1&destination=${MAPS_DESTINATION}`;
+const INSTAGRAM_HREF = "https://www.instagram.com/christiangomezj/";
 
 function summarizeOpenDays(days: number[]): string {
   const sorted = [...new Set(days)].sort((a, b) => a - b);
-  if (sorted.length === 0) return "Consulta disponibilidad al reservar";
+  if (sorted.length === 0) return "Consulta disponibilidad al escribirnos";
   // Agrupa días consecutivos (ej: 2,3,4,5,6 -> "Mar a Sáb")
   const ranges: [number, number][] = [];
   for (const d of sorted) {
@@ -68,19 +75,55 @@ export default async function Home() {
         </h1>
 
         <p className="mt-8 max-w-sm text-sm leading-relaxed text-muted">
-          Cortes, color, alisados e hidratación con Christian, Fernando, Diany y
-          Linci. Reserva tu cita en segundos.
+          Colorista internacional. Asesoría de imagen, balayage, alisados y looks
+          para novias y quinceañeras — con más de 15 años de experiencia.
         </p>
 
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <ButtonLink href="/reservar">Reservar cita</ButtonLink>
-          <ButtonLink href="/staff/login" variant="secondary">
-            Acceso staff
+        <div className="mt-10">
+          <ButtonLink href={WHATSAPP_HREF} external className="px-10">
+            Recibe tu asesoría
           </ButtonLink>
         </div>
 
+        {/* Sobre Christian */}
+        <section className="mt-28 w-full max-w-2xl">
+          <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted">Sobre Christian</p>
+          <h2 className="font-display text-3xl italic">15+ años transformando imágenes</h2>
+          <p className="mt-6 text-sm leading-relaxed text-muted">
+            Colorista internacional, especializado en asesoría de imagen y colorimetría.
+            Christian y su equipo han vestido cientos de looks para bodas, quinceañeras,
+            eventos sociales y el día a día de mujeres que quieren verse y sentirse
+            seguras de sí mismas.
+          </p>
+          <a
+            href={INSTAGRAM_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-block text-xs uppercase tracking-wide underline underline-offset-4"
+          >
+            Ver trabajos en Instagram ↗
+          </a>
+        </section>
+
+        {/* Portafolio */}
+        <section className="mt-24 w-full max-w-3xl">
+          <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted">Su trabajo</p>
+          <h2 className="font-display text-3xl italic">Portafolio</h2>
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex aspect-square items-center justify-center rounded-2xl bg-muted-bg"
+              >
+                <Image src="/logo-mark.png" alt="" width={335} height={257} className="h-8 w-auto opacity-30" />
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-muted">Próximamente: fotos de trabajos reales</p>
+        </section>
+
         {/* Servicios */}
-        <section className="mt-28 w-full max-w-3xl">
+        <section className="mt-24 w-full max-w-3xl">
           <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted">Lo que hacemos</p>
           <h2 className="font-display text-3xl italic">Servicios</h2>
 
@@ -142,7 +185,7 @@ export default async function Home() {
               </p>
             )}
             <a
-              href="https://www.google.com/maps/search/?api=1&query=Carrera+19+%23+8-28,+Barrio+C%C3%A1lixto,+Neiva,+Huila"
+              href={DIRECTIONS_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-4 inline-block text-xs underline underline-offset-4"
@@ -153,12 +196,17 @@ export default async function Home() {
         </section>
 
         <div className="mt-24">
-          <ButtonLink href="/reservar">Reservar mi cita</ButtonLink>
+          <ButtonLink href={WHATSAPP_HREF} external className="px-10">
+            Recibe tu asesoría
+          </ButtonLink>
         </div>
       </main>
 
       <footer className="border-t border-border px-6 py-6 text-center text-xs text-muted">
-        Carrera 19 # 8 -28, Barrio Cálixto, Neiva-Huila
+        <p>Carrera 19 # 8 -28, Barrio Cálixto, Neiva-Huila</p>
+        <Link href="/staff/login" className="mt-2 inline-block underline underline-offset-4">
+          Acceso staff
+        </Link>
       </footer>
     </div>
   );

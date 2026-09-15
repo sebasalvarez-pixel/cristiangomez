@@ -14,10 +14,25 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Christian Gómez Peluquería",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Christian Gómez | Peluquería y Asesor de Imagen en Neiva",
+    template: "%s | Christian Gómez",
+  },
   description:
-    "Reserva tu cita en Christian Gómez Peluquería — cortes, color, alisados, hidratación y más.",
+    "Peluquería y asesoría de imagen en Neiva, Huila. Colorista internacional: balayage, mechas, alisados, maquillaje social y looks para novias y quinceañeras. Más de 15 años de experiencia.",
+  keywords: [
+    "peluqueria neiva",
+    "maquillaje neiva",
+    "asesor de imagen neiva",
+    "colorista neiva",
+    "balayage neiva",
+    "peluqueria huila",
+    "christian gomez peluqueria",
+  ],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -27,6 +42,15 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Christian Gómez | Peluquería y Asesor de Imagen en Neiva",
+    description:
+      "Colorista internacional en Neiva, Huila. Asesoría de imagen, balayage, alisados y looks para novias y quinceañeras.",
+    url: SITE_URL,
+    siteName: "Christian Gómez",
+    locale: "es_CO",
+    type: "website",
   },
 };
 
