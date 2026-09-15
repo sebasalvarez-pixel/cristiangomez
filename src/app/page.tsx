@@ -100,23 +100,38 @@ export default async function Home() {
         </div>
 
         {/* Sobre Christian */}
-        <section className="mt-28 w-full max-w-2xl">
+        <section className="mt-28 w-full max-w-4xl">
           <p className="mb-2 text-xs uppercase tracking-[0.3em] text-muted">Sobre Christian</p>
           <h2 className="font-display text-3xl italic">15+ años transformando imágenes</h2>
-          <p className="mt-6 text-sm leading-relaxed text-muted">
-            Colorista internacional, especializado en asesoría de imagen y colorimetría.
-            Christian y su equipo han vestido cientos de looks para bodas, quinceañeras,
-            eventos sociales y el día a día de mujeres que quieren verse y sentirse
-            seguras de sí mismas.
-          </p>
-          <a
-            href={INSTAGRAM_HREF}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-block text-xs uppercase tracking-wide underline underline-offset-4"
-          >
-            Ver trabajos en Instagram ↗
-          </a>
+
+          <div className="mt-10 grid grid-cols-1 items-center gap-10 sm:grid-cols-2">
+            <video
+              className="mx-auto aspect-[9/16] w-full max-w-[300px] rounded-2xl object-cover"
+              controls
+              playsInline
+              preload="metadata"
+              poster="/videos/sobre-christian-poster.jpg"
+            >
+              <source src="/videos/sobre-christian.mp4" type="video/mp4" />
+            </video>
+
+            <div className="text-left">
+              <p className="text-sm leading-relaxed text-muted">
+                Colorista internacional, especializado en asesoría de imagen y colorimetría.
+                Christian y su equipo han vestido cientos de looks para bodas, quinceañeras,
+                eventos sociales y el día a día de mujeres que quieren verse y sentirse
+                seguras de sí mismas.
+              </p>
+              <a
+                href={INSTAGRAM_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-block text-xs uppercase tracking-wide underline underline-offset-4"
+              >
+                Ver trabajos en Instagram ↗
+              </a>
+            </div>
+          </div>
         </section>
 
         {/* Portafolio */}
