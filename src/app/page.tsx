@@ -108,6 +108,7 @@ export default async function Home() {
             <video
               className="mx-auto aspect-[9/16] w-full max-w-[300px] rounded-2xl object-cover"
               controls
+              loop
               playsInline
               preload="metadata"
               poster="/videos/sobre-christian-poster.jpg"
