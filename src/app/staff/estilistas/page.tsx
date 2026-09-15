@@ -10,15 +10,16 @@ export default async function EstilistasPage() {
   if (!admin.ok) redirect("/staff/agenda");
 
   const supabase = createSupabaseServiceClient();
-  const [{ data: stylists }, { data: hours }] = await Promise.all([
+  const [{ data: stylists }, { data: hours }, { data: timeOff }] = await Promise.all([
     supabase.from("stylists").select("*").order("sort_order"),
     supabase.from("business_hours").select("*"),
+    supabase.from("time_off").select("*").order("starts_at"),
   ]);
 
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="font-display mb-6 text-xl italic">Estilistas</h1>
-      <StylistsManager stylists={stylists ?? []} hours={hours ?? []} />
+      <StylistsManager stylists={stylists ?? []} hours={hours ?? []} timeOff={timeOff ?? []} />
     </div>
   );
 }

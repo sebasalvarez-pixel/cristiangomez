@@ -56,6 +56,14 @@ export interface BusinessHour {
   end_time: string;
 }
 
+export interface TimeOff {
+  id: string;
+  stylist_id: string;
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+}
+
 export interface Client {
   id: string;
   full_name: string;
