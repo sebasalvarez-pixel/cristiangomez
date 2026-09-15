@@ -1,16 +1,21 @@
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { AgendaView } from "@/components/staff/AgendaView";
 import { bogotaDayRangeUtc, utcToBogotaDateIso } from "@/lib/timezone";
+import { getMonthBounds, getWeekDates } from "@/lib/calendar";
 
 export const dynamic = "force-dynamic";
+
+type ViewMode = "day" | "week" | "month";
 
 export default async function AgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; stylist?: string }>;
+  searchParams: Promise<{ date?: string; stylist?: string; view?: string }>;
 }) {
-  const { date, stylist: stylistParam } = await searchParams;
+  const { date, stylist: stylistParam, view: viewParam } = await searchParams;
   const dateIso = date ?? utcToBogotaDateIso(new Date());
+  const view: ViewMode =
+    viewParam === "week" || viewParam === "month" ? viewParam : "day";
 
   const auth = await createSupabaseServerClient();
   const {
@@ -49,15 +54,30 @@ export default async function AgendaPage({
 
   const activeStylistId = canSeeAllStylists ? stylistParam ?? "all" : ownStylist?.id ?? "";
 
-  const { startIso, endIso } = bogotaDayRangeUtc(dateIso);
+  // El rango a consultar depende de la vista: un día, la semana (dom-sáb) o el mes completo.
+  let rangeStartIso: string;
+  let rangeEndIso: string;
+  if (view === "week") {
+    const week = getWeekDates(dateIso);
+    rangeStartIso = bogotaDayRangeUtc(week[0]).startIso;
+    rangeEndIso = bogotaDayRangeUtc(week[6]).endIso;
+  } else if (view === "month") {
+    const { firstDay, lastDay } = getMonthBounds(dateIso);
+    rangeStartIso = bogotaDayRangeUtc(firstDay).startIso;
+    rangeEndIso = bogotaDayRangeUtc(lastDay).endIso;
+  } else {
+    const day = bogotaDayRangeUtc(dateIso);
+    rangeStartIso = day.startIso;
+    rangeEndIso = day.endIso;
+  }
 
   let query = supabase
     .from("appointments")
     .select(
       "id, start_time, end_time, status, notes, clients(full_name, phone_e164), stylists(display_name, color), appointment_services(name_at_booking, price_cents_at_booking)"
     )
-    .gte("start_time", startIso)
-    .lt("start_time", endIso)
+    .gte("start_time", rangeStartIso)
+    .lt("start_time", rangeEndIso)
     .order("start_time");
 
   if (activeStylistId && activeStylistId !== "all") {
@@ -90,6 +110,7 @@ export default async function AgendaPage({
 
   return (
     <AgendaView
+      view={view}
       dateIso={dateIso}
       isAdmin={canSeeAllStylists}
       stylists={visibleStylists}

@@ -1,14 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { addDays, format, subDays } from "date-fns";
+import { useMemo, useState } from "react";
+import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/cn";
 import { formatCOP } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { NewAppointmentForm } from "@/components/staff/NewAppointmentForm";
+import { addDaysIso, addMonthsIso, getMonthGrid, getWeekDates } from "@/lib/calendar";
+import { utcToBogotaDateIso } from "@/lib/timezone";
+
+type ViewMode = "day" | "week" | "month";
 
 interface AppointmentRow {
   id: string;
@@ -28,6 +32,7 @@ interface Stylist {
 }
 
 interface Props {
+  view: ViewMode;
   dateIso: string;
   isAdmin: boolean;
   stylists: Stylist[];
@@ -46,6 +51,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function AgendaView({
+  view,
   dateIso,
   isAdmin,
   stylists,
@@ -58,14 +64,28 @@ export function AgendaView({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showNewAppointment, setShowNewAppointment] = useState(false);
   const date = new Date(`${dateIso}T00:00:00`);
+  const todayIso = utcToBogotaDateIso(new Date());
 
-  function goToDate(newDate: Date) {
-    const iso = format(newDate, "yyyy-MM-dd");
-    router.push(`/staff/agenda?date=${iso}${activeStylistId !== "all" ? `&stylist=${activeStylistId}` : ""}`);
+  const stylistQuery = activeStylistId && activeStylistId !== "all" ? `&stylist=${activeStylistId}` : "";
+
+  function goTo(newDateIso: string, newView: ViewMode = view) {
+    router.push(`/staff/agenda?view=${newView}&date=${newDateIso}${stylistQuery}`);
   }
 
   function goToStylist(id: string) {
-    router.push(`/staff/agenda?date=${dateIso}&stylist=${id}`);
+    router.push(`/staff/agenda?view=${view}&date=${dateIso}&stylist=${id}`);
+  }
+
+  function goPrev() {
+    if (view === "day") goTo(addDaysIso(dateIso, -1));
+    else if (view === "week") goTo(addDaysIso(dateIso, -7));
+    else goTo(addMonthsIso(dateIso, -1));
+  }
+
+  function goNext() {
+    if (view === "day") goTo(addDaysIso(dateIso, 1));
+    else if (view === "week") goTo(addDaysIso(dateIso, 7));
+    else goTo(addMonthsIso(dateIso, 1));
   }
 
   async function updateStatus(id: string, status: string) {
@@ -79,18 +99,54 @@ export function AgendaView({
     router.refresh();
   }
 
+  const appointmentsByDay = useMemo(() => {
+    const map = new Map<string, AppointmentRow[]>();
+    for (const appt of appointments) {
+      const key = utcToBogotaDateIso(new Date(appt.start_time));
+      const list = map.get(key) ?? [];
+      list.push(appt);
+      map.set(key, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => a.start_time.localeCompare(b.start_time));
+    return map;
+  }, [appointments]);
+
+  const headerLabel = useMemo(() => {
+    if (view === "day") return format(date, "EEEE d 'de' MMMM", { locale: es });
+    if (view === "week") {
+      const week = getWeekDates(dateIso);
+      const start = new Date(`${week[0]}T00:00:00`);
+      const end = new Date(`${week[6]}T00:00:00`);
+      return `${format(start, "d MMM", { locale: es })} – ${format(end, "d MMM yyyy", { locale: es })}`;
+    }
+    return format(date, "MMMM yyyy", { locale: es });
+  }, [view, dateIso, date]);
+
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
-        <button onClick={() => goToDate(subDays(date, 1))} className="px-2 text-lg">
+      <div className="mb-4 flex items-center justify-between">
+        <button onClick={goPrev} className="px-2 text-lg">
           ‹
         </button>
-        <h1 className="font-display text-xl italic">
-          {format(date, "EEEE d 'de' MMMM", { locale: es })}
-        </h1>
-        <button onClick={() => goToDate(addDays(date, 1))} className="px-2 text-lg">
+        <h1 className="font-display text-lg italic sm:text-xl">{headerLabel}</h1>
+        <button onClick={goNext} className="px-2 text-lg">
           ›
         </button>
+      </div>
+
+      <div className="mb-6 flex justify-center gap-2">
+        {(["day", "week", "month"] as ViewMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => goTo(dateIso, mode)}
+            className={cn(
+              "rounded-full border px-4 py-1.5 text-xs",
+              view === mode ? "border-foreground bg-foreground text-background" : "border-border"
+            )}
+          >
+            {mode === "day" ? "Día" : mode === "week" ? "Semana" : "Mes"}
+          </button>
+        ))}
       </div>
 
       <Button className="mb-6 w-full sm:w-auto" onClick={() => setShowNewAppointment(true)}>
@@ -123,71 +179,33 @@ export function AgendaView({
         </div>
       )}
 
-      {appointments.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted">No hay citas este día.</p>
+      {view === "day" && (
+        <DayAgenda
+          appointments={appointmentsByDay.get(dateIso) ?? []}
+          isAdmin={isAdmin}
+          updatingId={updatingId}
+          onUpdateStatus={updateStatus}
+        />
       )}
 
-      <div className="space-y-3">
-        {appointments.map((appt) => {
-          const total = appt.appointment_services.reduce((sum, s) => sum + s.price_cents_at_booking, 0);
-          return (
-            <div key={appt.id} className="rounded-2xl border border-border px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium">
-                    {format(new Date(appt.start_time), "h:mm a")} –{" "}
-                    {format(new Date(appt.end_time), "h:mm a")}
-                  </p>
-                  <p className="mt-1 text-sm">{appt.clients.full_name}</p>
-                  <p className="text-xs text-muted">{appt.clients.phone_e164}</p>
-                  {isAdmin && (
-                    <p className="mt-1 text-xs" style={{ color: appt.stylists.color }}>
-                      {appt.stylists.display_name}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-3 py-1 text-xs",
-                    appt.status === "cancelled" || appt.status === "no_show"
-                      ? "bg-muted-bg text-muted"
-                      : "bg-foreground text-background"
-                  )}
-                >
-                  {STATUS_LABEL[appt.status]}
-                </span>
-              </div>
+      {view === "week" && (
+        <WeekAgenda
+          dateIso={dateIso}
+          appointmentsByDay={appointmentsByDay}
+          isAdmin={isAdmin}
+          todayIso={todayIso}
+          onSelectDay={(d) => goTo(d, "day")}
+        />
+      )}
 
-              <ul className="mt-3 text-xs text-muted">
-                {appt.appointment_services.map((s) => (
-                  <li key={s.name_at_booking}>{s.name_at_booking}</li>
-                ))}
-              </ul>
-              {total > 0 && <p className="mt-1 text-xs font-medium">{formatCOP(total)}</p>}
-
-              {appt.status !== "cancelled" && appt.status !== "completed" && (
-                <div className="mt-4 flex gap-2">
-                  <ActionButton
-                    label="Completada"
-                    onClick={() => updateStatus(appt.id, "completed")}
-                    disabled={updatingId === appt.id}
-                  />
-                  <ActionButton
-                    label="No asistió"
-                    onClick={() => updateStatus(appt.id, "no_show")}
-                    disabled={updatingId === appt.id}
-                  />
-                  <ActionButton
-                    label="Cancelar"
-                    onClick={() => updateStatus(appt.id, "cancelled")}
-                    disabled={updatingId === appt.id}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {view === "month" && (
+        <MonthAgenda
+          dateIso={dateIso}
+          appointmentsByDay={appointmentsByDay}
+          todayIso={todayIso}
+          onSelectDay={(d) => goTo(d, "day")}
+        />
+      )}
 
       {showNewAppointment && (
         <NewAppointmentForm
@@ -203,6 +221,205 @@ export function AgendaView({
           }}
         />
       )}
+    </div>
+  );
+}
+
+function DayAgenda({
+  appointments,
+  isAdmin,
+  updatingId,
+  onUpdateStatus,
+}: {
+  appointments: AppointmentRow[];
+  isAdmin: boolean;
+  updatingId: string | null;
+  onUpdateStatus: (id: string, status: string) => void;
+}) {
+  if (appointments.length === 0) {
+    return <p className="py-12 text-center text-sm text-muted">No hay citas este día.</p>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {appointments.map((appt) => {
+        const total = appt.appointment_services.reduce((sum, s) => sum + s.price_cents_at_booking, 0);
+        return (
+          <div key={appt.id} className="rounded-2xl border border-border px-5 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">
+                  {format(new Date(appt.start_time), "h:mm a")} –{" "}
+                  {format(new Date(appt.end_time), "h:mm a")}
+                </p>
+                <p className="mt-1 text-sm">{appt.clients.full_name}</p>
+                <p className="text-xs text-muted">{appt.clients.phone_e164}</p>
+                {isAdmin && (
+                  <p className="mt-1 text-xs" style={{ color: appt.stylists.color }}>
+                    {appt.stylists.display_name}
+                  </p>
+                )}
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1 text-xs",
+                  appt.status === "cancelled" || appt.status === "no_show"
+                    ? "bg-muted-bg text-muted"
+                    : "bg-foreground text-background"
+                )}
+              >
+                {STATUS_LABEL[appt.status]}
+              </span>
+            </div>
+
+            <ul className="mt-3 text-xs text-muted">
+              {appt.appointment_services.map((s) => (
+                <li key={s.name_at_booking}>{s.name_at_booking}</li>
+              ))}
+            </ul>
+            {total > 0 && <p className="mt-1 text-xs font-medium">{formatCOP(total)}</p>}
+
+            {appt.status !== "cancelled" && appt.status !== "completed" && (
+              <div className="mt-4 flex gap-2">
+                <ActionButton
+                  label="Completada"
+                  onClick={() => onUpdateStatus(appt.id, "completed")}
+                  disabled={updatingId === appt.id}
+                />
+                <ActionButton
+                  label="No asistió"
+                  onClick={() => onUpdateStatus(appt.id, "no_show")}
+                  disabled={updatingId === appt.id}
+                />
+                <ActionButton
+                  label="Cancelar"
+                  onClick={() => onUpdateStatus(appt.id, "cancelled")}
+                  disabled={updatingId === appt.id}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekAgenda({
+  dateIso,
+  appointmentsByDay,
+  isAdmin,
+  todayIso,
+  onSelectDay,
+}: {
+  dateIso: string;
+  appointmentsByDay: Map<string, AppointmentRow[]>;
+  isAdmin: boolean;
+  todayIso: string;
+  onSelectDay: (dateIso: string) => void;
+}) {
+  const week = getWeekDates(dateIso);
+
+  return (
+    <div className="space-y-3">
+      {week.map((day) => {
+        const dayAppointments = (appointmentsByDay.get(day) ?? []).filter(
+          (a) => a.status !== "cancelled"
+        );
+        const isToday = day === todayIso;
+        const dayDate = new Date(`${day}T00:00:00`);
+        return (
+          <div key={day} className="rounded-2xl border border-border">
+            <button
+              onClick={() => onSelectDay(day)}
+              className={cn(
+                "flex w-full items-center justify-between rounded-t-2xl px-5 py-3 text-left",
+                isToday && "bg-muted-bg"
+              )}
+            >
+              <span className="text-sm font-medium">
+                {format(dayDate, "EEEE d 'de' MMMM", { locale: es })}
+              </span>
+              <span className="text-xs text-muted">
+                {dayAppointments.length > 0 ? `${dayAppointments.length} cita(s)` : "Sin citas"}
+              </span>
+            </button>
+            {dayAppointments.length > 0 && (
+              <div className="divide-y divide-border border-t border-border">
+                {dayAppointments.map((appt) => (
+                  <button
+                    key={appt.id}
+                    onClick={() => onSelectDay(day)}
+                    className="flex w-full items-center gap-3 px-5 py-2.5 text-left text-sm"
+                  >
+                    <span className="w-20 shrink-0 text-muted">
+                      {format(new Date(appt.start_time), "h:mm a")}
+                    </span>
+                    <span className="flex-1 truncate">{appt.clients.full_name}</span>
+                    {isAdmin && (
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: appt.stylists.color }}
+                        title={appt.stylists.display_name}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthAgenda({
+  dateIso,
+  appointmentsByDay,
+  todayIso,
+  onSelectDay,
+}: {
+  dateIso: string;
+  appointmentsByDay: Map<string, AppointmentRow[]>;
+  todayIso: string;
+  onSelectDay: (dateIso: string) => void;
+}) {
+  const weeks = getMonthGrid(dateIso);
+  const WEEKDAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
+
+  return (
+    <div>
+      <div className="mb-2 grid grid-cols-7 text-center text-xs text-muted">
+        {WEEKDAY_LABELS.map((d, i) => (
+          <span key={i}>{d}</span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1.5">
+        {weeks.flat().map((cell) => {
+          const count = (appointmentsByDay.get(cell.dateIso) ?? []).filter(
+            (a) => a.status !== "cancelled"
+          ).length;
+          const isToday = cell.dateIso === todayIso;
+          const dayNumber = Number(cell.dateIso.slice(8, 10));
+          return (
+            <button
+              key={cell.dateIso}
+              onClick={() => onSelectDay(cell.dateIso)}
+              className={cn(
+                "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-xl border text-sm",
+                cell.inMonth ? "border-border" : "border-transparent text-muted/50",
+                isToday && "border-foreground font-medium"
+              )}
+            >
+              <span>{dayNumber}</span>
+              {count > 0 && (
+                <span className="flex h-1.5 w-1.5 rounded-full bg-foreground" aria-label={`${count} citas`} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
