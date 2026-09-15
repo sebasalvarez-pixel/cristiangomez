@@ -5,7 +5,7 @@ import { addDays, format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatCOP } from "@/lib/types";
+import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory, Stylist } from "@/lib/types";
 
 interface StylistService {
@@ -180,7 +180,7 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
                               </p>
                             )}
                             <p className="mt-2 text-xs text-muted">
-                              {service.duration_minutes} min · {formatCOP(service.price_cents)}
+                              {formatDuration(service.duration_minutes)} · {formatCOP(service.price_cents)}
                             </p>
                           </div>
                           <input
@@ -204,7 +204,7 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
           <div className="sticky bottom-0 mt-6 border-t border-border bg-background pt-4">
             <p className="mb-3 text-xs text-muted">
               {selectedServiceIds.length} servicio(s) seleccionados
-              {totalDuration > 0 && ` · ${totalDuration} min · ${formatCOP(totalPrice)}`}
+              {totalDuration > 0 && ` · ${formatDuration(totalDuration)} · ${formatCOP(totalPrice)}`}
             </p>
             <Button
               className="w-full"

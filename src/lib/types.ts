@@ -89,3 +89,11 @@ export function formatCOP(cents: number): string {
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
+
+/** Muestra la duración en horas cuando llega o pasa de 1h (ej: "4 h", "3 h 30 min"); en minutos si es menor. */
+export function formatDuration(totalMinutes: number): string {
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
+}

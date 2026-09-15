@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { formatCOP } from "@/lib/types";
+import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
 
 interface Stylist {
@@ -142,7 +142,7 @@ export function NewAppointmentForm({
                       onChange={() => toggleService(service.id)}
                       className="accent-foreground"
                     />
-                    {service.name} · {service.duration_minutes} min · {formatCOP(service.price_cents)}
+                    {service.name} · {formatDuration(service.duration_minutes)} · {formatCOP(service.price_cents)}
                   </label>
                 ))}
               </div>

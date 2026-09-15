@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { formatCOP } from "@/lib/types";
+import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 
@@ -87,7 +87,7 @@ export function ServicesManager({ categories, services }: Props) {
                       {service.name}
                     </p>
                     <p className="text-xs text-muted">
-                      {service.duration_minutes} min · {formatCOP(service.price_cents)}
+                      {formatDuration(service.duration_minutes)} · {formatCOP(service.price_cents)}
                     </p>
                   </div>
                   <button
