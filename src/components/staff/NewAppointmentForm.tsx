@@ -38,6 +38,7 @@ export function NewAppointmentForm({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [notifyClient, setNotifyClient] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +90,7 @@ export function NewAppointmentForm({
         startTime: selectedSlot,
         clientName: name,
         clientPhone: phone,
+        notifyClient,
       }),
     });
     const data = await res.json();
@@ -195,6 +197,16 @@ export function NewAppointmentForm({
             className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-foreground"
           />
         </div>
+
+        <label className="mb-4 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={notifyClient}
+            onChange={(e) => setNotifyClient(e.target.checked)}
+            className="accent-foreground"
+          />
+          Enviar confirmación por WhatsApp a la clienta
+        </label>
 
         {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 

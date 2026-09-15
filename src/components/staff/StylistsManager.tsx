@@ -36,15 +36,15 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
     <div className="space-y-4">
       {stylists.map((stylist) => (
         <div key={stylist.id} className="rounded-2xl border border-border">
-          <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div
-                className="h-8 w-8 rounded-full text-white flex items-center justify-center text-xs"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs text-white"
                 style={{ backgroundColor: stylist.color }}
               >
                 {stylist.display_name.charAt(0)}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className={cn("text-sm font-medium", !stylist.is_active && "text-muted line-through")}>
                   {stylist.display_name}
                 </p>
@@ -53,7 +53,7 @@ export function StylistsManager({ stylists, hours, timeOff }: Props) {
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap justify-end gap-3">
+            <div className="flex flex-wrap gap-3 sm:shrink-0 sm:justify-end">
               <button
                 className="text-xs underline underline-offset-4"
                 onClick={() => setEditingProfile(editingProfile === stylist.id ? null : stylist.id)}

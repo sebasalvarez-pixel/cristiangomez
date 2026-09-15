@@ -13,6 +13,7 @@ const schema = z.object({
   clientName: z.string().min(2).max(120),
   clientPhone: z.string().min(7).max(20),
   notes: z.string().max(500).optional(),
+  notifyClient: z.boolean().optional().default(true),
 });
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { stylistId, serviceIds, startTime, clientName, notes } = parsed.data;
+  const { stylistId, serviceIds, startTime, clientName, notes, notifyClient } = parsed.data;
 
   const phone = parsePhoneNumberFromString(parsed.data.clientPhone, "CO");
   if (!phone || !phone.isValid()) {
@@ -133,16 +134,18 @@ export async function POST(request: Request) {
     }))
   );
 
-  await notifyAppointment({
-    appointmentId: appointment.id,
-    type: "confirmation",
-    clientPhoneE164: phoneE164,
-    clientName,
-    stylistName: stylist.display_name,
-    serviceNames: services.map((s) => s.name),
-    startTimeIso: start.toISOString(),
-    manageToken: appointment.manage_token,
-  });
+  if (notifyClient) {
+    await notifyAppointment({
+      appointmentId: appointment.id,
+      type: "confirmation",
+      clientPhoneE164: phoneE164,
+      clientName,
+      stylistName: stylist.display_name,
+      serviceNames: services.map((s) => s.name),
+      startTimeIso: start.toISOString(),
+      manageToken: appointment.manage_token,
+    });
+  }
 
   if (stylist.phone_e164) {
     await notifyStylistNewBooking({
