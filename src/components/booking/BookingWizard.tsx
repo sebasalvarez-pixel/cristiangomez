@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { addDays, format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory, Stylist } from "@/lib/types";
@@ -23,8 +24,10 @@ interface Props {
 type Step = "services" | "stylist" | "datetime" | "contact" | "done";
 
 const ANY_STYLIST = "any";
+const STEP_ORDER: Exclude<Step, "done">[] = ["services", "stylist", "datetime", "contact"];
 
 export function BookingWizard({ categories, services, stylists, stylistServices }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("services");
   const [openCategory, setOpenCategory] = useState<string | null>(categories[0]?.id ?? null);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -142,9 +145,19 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
 
   const next14Days = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
 
+  function goBack() {
+    if (step === "done") return;
+    const index = STEP_ORDER.indexOf(step);
+    if (index <= 0) {
+      router.push("/");
+      return;
+    }
+    setStep(STEP_ORDER[index - 1]);
+  }
+
   return (
     <div>
-      <StepHeader step={step} />
+      {step !== "done" && <WizardHeader step={step} onBack={goBack} />}
 
       {step === "services" && (
         <div className="space-y-3">
@@ -246,7 +259,6 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
               <p className="text-sm font-medium">{stylist.display_name}</p>
             </button>
           ))}
-          <BackButton onClick={() => setStep("services")} />
         </div>
       )}
 
@@ -296,11 +308,10 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
               })}
           </div>
 
-          <div className="mt-6 flex flex-col gap-3">
-            <Button disabled={!selectedSlot} onClick={() => setStep("contact")}>
+          <div className="mt-6">
+            <Button className="w-full" disabled={!selectedSlot} onClick={() => setStep("contact")}>
               Continuar
             </Button>
-            <BackButton onClick={() => setStep("stylist")} />
           </div>
         </div>
       )}
@@ -349,7 +360,6 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
           >
             {submitting ? "Confirmando…" : "Confirmar cita"}
           </Button>
-          <BackButton onClick={() => setStep("datetime")} />
         </div>
       )}
 
@@ -363,37 +373,52 @@ export function BookingWizard({ categories, services, stylists, stylistServices 
             Te enviamos la confirmación por WhatsApp al {phone}. Si necesitas cancelar, usa el
             link que llegó en el mensaje.
           </p>
-          {manageToken && (
-            <a
-              href={`/mi-cita/${manageToken}`}
-              className="mt-6 text-sm underline underline-offset-4"
-            >
-              Ver mi cita
-            </a>
-          )}
+          <div className="mt-8 flex w-full flex-col gap-3">
+            {manageToken && (
+              <ButtonLink href={`/mi-cita/${manageToken}`} variant="secondary">
+                Ver mi cita
+              </ButtonLink>
+            )}
+            <ButtonLink href="/">Volver al inicio</ButtonLink>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function StepHeader({ step }: { step: Step }) {
-  if (step === "done") return null;
+function WizardHeader({ step, onBack }: { step: Exclude<Step, "done">; onBack: () => void }) {
   const labels: Record<Exclude<Step, "done">, string> = {
     services: "Elige tus servicios",
     stylist: "Elige tu especialista",
     datetime: "Elige fecha y hora",
     contact: "Tus datos",
   };
-  return (
-    <h1 className="font-display mb-6 text-2xl italic">{labels[step]}</h1>
-  );
-}
+  const stepIndex = STEP_ORDER.indexOf(step);
 
-function BackButton({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className="text-center text-xs text-muted underline underline-offset-4">
-      Volver
-    </button>
+    <div className="mb-6">
+      <div className="mb-4 flex items-center gap-3">
+        <button
+          onClick={onBack}
+          aria-label="Volver"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-lg"
+        >
+          ‹
+        </button>
+        <div className="flex gap-1.5">
+          {STEP_ORDER.map((s, i) => (
+            <span
+              key={s}
+              className={cn(
+                "h-1.5 w-6 rounded-full",
+                i <= stepIndex ? "bg-foreground" : "bg-border"
+              )}
+            />
+          ))}
+        </div>
+      </div>
+      <h1 className="font-display text-2xl italic">{labels[step]}</h1>
+    </div>
   );
 }

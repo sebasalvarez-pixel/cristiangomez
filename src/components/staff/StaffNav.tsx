@@ -29,7 +29,9 @@ export function StaffNav({ name, role }: { name: string; role: string }) {
   return (
     <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-8">
       <div className="flex items-center gap-6">
-        <span className="font-display text-lg italic">CG</span>
+        <Link href="/staff/agenda" className="font-display text-lg italic">
+          CG
+        </Link>
         <nav className="flex gap-4 text-sm">
           {links.map((link) => (
             <Link
