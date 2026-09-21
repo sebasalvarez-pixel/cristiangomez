@@ -35,7 +35,8 @@ El código ya está listo y probado (build + UI). Falta conectar 3 cosas que sol
    Hola {{1}} 👋 Tu cita en Christian Gómez Peluquería quedó confirmada:
    {{2}} con {{3}}, el {{4}}.
    Dirección: {{5}}
-   Si necesitas cancelar: {{6}}
+   Si necesitas cancelar, hazlo aquí: {{6}}
+   ¡Te esperamos!
    ```
 
    **`recordatorio_cita`** (mismo orden de variables que la anterior)
@@ -43,6 +44,7 @@ El código ya está listo y probado (build + UI). Falta conectar 3 cosas que sol
    Hola {{1}}, te recordamos tu cita: {{2}} con {{3}}, el {{4}}.
    Dirección: {{5}}
    Cancelar: {{6}}
+   ¡Te esperamos!
    ```
 
    **`cita_cancelada`**
@@ -53,8 +55,10 @@ El código ya está listo y probado (build + UI). Falta conectar 3 cosas que sol
 
    **`nueva_cita_estilista`** (esta le llega al estilista, no a la clienta)
    ```
-   Hola {{1}}, tienes una cita nueva: {{3}} con {{2}}, el {{4}}.
+   Hola {{1}}, tienes una cita nueva: {{3}} con {{2}}, el {{4}}. Revisa tu agenda para más detalles.
    ```
+
+   Importante: Meta rechaza plantillas que empiezan o terminan con una variable (por eso cada una cierra con texto fijo). Al crearlas, Meta pide un ejemplo por cada variable: usa valores reales como "María", "Corte para dama", "Fernando", "martes 22 de septiembre, 10:00 AM", la dirección y un link cualquiera.
 
    Importante: respeta el orden y cantidad de variables tal cual, porque el código las llena en ese orden exacto (ver `src/lib/notifications.ts`).
 
