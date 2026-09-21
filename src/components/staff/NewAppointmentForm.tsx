@@ -8,7 +8,8 @@ import { cn } from "@/lib/cn";
 import { formatCOP, formatDuration } from "@/lib/types";
 import type { Service, ServiceCategory } from "@/lib/types";
 import { DatePicker } from "@/components/booking/DatePicker";
-import { utcToBogotaDateIso } from "@/lib/timezone";
+import { dayOfWeekForDateIso, utcToBogotaDateIso } from "@/lib/timezone";
+import { addDaysIso } from "@/lib/calendar";
 
 interface Stylist {
   id: string;
@@ -21,6 +22,7 @@ interface Props {
   defaultStylistId?: string;
   categories: ServiceCategory[];
   services: Service[];
+  workingDays: Record<string, number[]>;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -31,6 +33,7 @@ export function NewAppointmentForm({
   defaultStylistId,
   categories,
   services,
+  workingDays,
   onClose,
   onCreated,
 }: Props) {
@@ -58,6 +61,26 @@ export function NewAppointmentForm({
     setSelectedServiceIds((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  }
+
+  const disabledWeekdays = useMemo(() => {
+    if (!stylistId) return [];
+    const open = workingDays[stylistId] ?? [];
+    return [0, 1, 2, 3, 4, 5, 6].filter((d) => !open.includes(d));
+  }, [stylistId, workingDays]);
+
+  function handlePickStylist(id: string) {
+    setStylistId(id);
+    const open = workingDays[id] ?? [];
+    if (open.length === 0 || open.includes(dayOfWeekForDateIso(selectedDateIso))) return;
+    let candidate = selectedDateIso;
+    for (let i = 0; i < 14; i++) {
+      candidate = addDaysIso(candidate, 1);
+      if (open.includes(dayOfWeekForDateIso(candidate))) {
+        setSelectedDateIso(candidate);
+        return;
+      }
+    }
   }
 
   const slotsReady = Boolean(stylistId) && totalDuration > 0;
@@ -123,11 +146,16 @@ export function NewAppointmentForm({
         </div>
 
         <p className="mb-2 text-xs uppercase tracking-wide text-muted">Estilista</p>
+        {stylists.length === 0 && (
+          <p className="mb-4 rounded-xl bg-muted-bg px-4 py-3 text-sm text-muted">
+            No hay estilistas disponibles para tu cuenta. Pídele a Christian que revise tu acceso.
+          </p>
+        )}
         <div className="mb-4 flex flex-wrap gap-2">
           {stylists.map((s) => (
             <button
               key={s.id}
-              onClick={() => setStylistId(s.id)}
+              onClick={() => handlePickStylist(s.id)}
               className={cn(
                 "rounded-full border px-4 py-2 text-sm",
                 stylistId === s.id ? "border-foreground bg-foreground text-background" : "border-border"
@@ -136,14 +164,6 @@ export function NewAppointmentForm({
               {s.display_name}
             </button>
           ))}
-        </div>
-
-        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Fecha</p>
-        <div className="mb-4">
-          <DatePicker selectedDateIso={selectedDateIso} todayIso={todayIso} onSelect={setSelectedDateIso} />
-          <p className="mt-2 text-center text-xs text-muted">
-            {format(new Date(`${selectedDateIso}T00:00:00`), "EEEE d 'de' MMMM", { locale: es })}
-          </p>
         </div>
 
         <p className="mb-2 text-xs uppercase tracking-wide text-muted">Servicios</p>
@@ -170,13 +190,23 @@ export function NewAppointmentForm({
           })}
         </div>
 
-        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Horario</p>
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Fecha</p>
         <div className="mb-4">
-          {!slotsReady && (
-            <p className="rounded-xl bg-muted-bg px-4 py-3 text-sm text-muted">
-              Elige la estilista y al menos un servicio para ver los horarios disponibles.
+          <DatePicker key={selectedDateIso.slice(0, 7)} selectedDateIso={selectedDateIso} disabledWeekdays={disabledWeekdays} todayIso={todayIso} onSelect={setSelectedDateIso} />
+          {!stylistId && (
+            <p className="mt-2 text-center text-xs text-muted">
+              Elige primero la estilista: así solo verás los días en que ella trabaja.
             </p>
           )}
+          <p className="mt-2 text-center text-xs text-muted">
+            {format(new Date(`${selectedDateIso}T00:00:00`), "EEEE d 'de' MMMM", { locale: es })}
+          </p>
+        </div>
+
+        {slotsReady && (
+        <>
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Horario</p>
+        <div className="mb-4">
           {loadingSlots && <p className="py-3 text-sm text-muted">Buscando horarios…</p>}
           {slots && slots.length === 0 && (
             <p className="rounded-xl bg-muted-bg px-4 py-3 text-sm text-muted">
@@ -200,6 +230,8 @@ export function NewAppointmentForm({
             </div>
           )}
         </div>
+        </>
+        )}
 
         <div className="mb-4 space-y-2">
           <input

@@ -33,13 +33,31 @@ export default async function AgendaPage({
     { data: ownStylist },
     { data: categories },
     { data: services },
+    { data: hoursRows },
   ] = await Promise.all([
     supabase.from("profiles").select("role").eq("id", user.id).single(),
     supabase.from("stylists").select("*").eq("is_active", true).order("sort_order"),
     supabase.from("stylists").select("id").eq("profile_id", user.id).maybeSingle(),
     supabase.from("service_categories").select("*").order("sort_order"),
     supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+    supabase.from("business_hours").select("stylist_id, day_of_week"),
   ]);
+
+  const workingDays: Record<string, number[]> = {};
+  for (const row of hoursRows ?? []) {
+    (workingDays[row.stylist_id] ??= []).push(row.day_of_week);
+  }
+
+  if (!profile) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <p className="font-display text-xl italic">Tu cuenta aún no tiene un perfil de staff</p>
+        <p className="mt-3 text-sm text-muted">
+          Pídele a Christian que active tu acceso para poder ver y crear citas.
+        </p>
+      </div>
+    );
+  }
 
   const isAdmin = profile?.role === "admin";
   // Recepción ve y gestiona la agenda de todos, igual que admin, pero no puede
@@ -133,6 +151,7 @@ export default async function AgendaPage({
       upcomingCount={upcomingCount}
       categories={categories ?? []}
       services={services ?? []}
+      workingDays={workingDays}
     />
   );
 }

@@ -41,6 +41,7 @@ interface Props {
   upcomingCount?: number;
   categories: ServiceCategory[];
   services: Service[];
+  workingDays: Record<string, number[]>;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -61,6 +62,7 @@ export function AgendaView({
   upcomingCount = 0,
   categories,
   services,
+  workingDays,
 }: Props) {
   const router = useRouter();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -255,6 +257,7 @@ export function AgendaView({
           defaultStylistId={activeStylistId}
           categories={categories}
           services={services}
+          workingDays={workingDays}
           onClose={() => setShowNewAppointment(false)}
           onCreated={() => {
             setShowNewAppointment(false);

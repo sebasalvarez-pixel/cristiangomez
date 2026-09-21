@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { addMonthsIso, getMonthGrid } from "@/lib/calendar";
 import { cn } from "@/lib/cn";
+import { dayOfWeekForDateIso } from "@/lib/timezone";
 
 const WEEKDAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
@@ -12,9 +13,10 @@ interface Props {
   selectedDateIso: string | null;
   todayIso: string;
   onSelect: (dateIso: string) => void;
+  disabledWeekdays?: number[];
 }
 
-export function DatePicker({ selectedDateIso, todayIso, onSelect }: Props) {
+export function DatePicker({ selectedDateIso, todayIso, onSelect, disabledWeekdays = [] }: Props) {
   const [monthRef, setMonthRef] = useState(selectedDateIso ?? todayIso);
   const weeks = getMonthGrid(monthRef);
   const monthDate = new Date(`${monthRef}T00:00:00`);
@@ -51,7 +53,8 @@ export function DatePicker({ selectedDateIso, todayIso, onSelect }: Props) {
       <div className="grid grid-cols-7 gap-1">
         {weeks.flat().map((cell) => {
           const isPast = cell.dateIso < todayIso;
-          const disabled = isPast || !cell.inMonth;
+          const isClosed = disabledWeekdays.includes(dayOfWeekForDateIso(cell.dateIso));
+          const disabled = isPast || isClosed || !cell.inMonth;
           const isSelected = cell.dateIso === selectedDateIso;
           const isToday = cell.dateIso === todayIso;
           const dayNumber = Number(cell.dateIso.slice(8, 10));
