@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/Button";
@@ -38,8 +38,7 @@ export function NewAppointmentForm({
   const [selectedDateIso, setSelectedDateIso] = useState(dateIso < todayIso ? todayIso : dateIso);
   const [stylistId, setStylistId] = useState(defaultStylistId && defaultStylistId !== "all" ? defaultStylistId : "");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
-  const [slots, setSlots] = useState<string[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotResult, setSlotResult] = useState<{ key: string; slots: string[] } | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -59,38 +58,37 @@ export function NewAppointmentForm({
     setSelectedServiceIds((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
-    setSelectedSlot(null);
-    setSlots([]);
   }
 
-  async function loadSlots(currentStylistId: string, currentDateIso: string) {
-    if (!currentStylistId || totalDuration === 0) return;
-    setLoadingSlots(true);
-    setSelectedSlot(null);
-    const res = await fetch("/api/availability", {
+  const slotsReady = Boolean(stylistId) && totalDuration > 0;
+  const slotKey = `${stylistId}|${selectedDateIso}|${totalDuration}`;
+  const slots = slotsReady && slotResult?.key === slotKey ? slotResult.slots : null;
+  const loadingSlots = slotsReady && slotResult?.key !== slotKey;
+  const validSlot = slots && selectedSlot && slots.includes(selectedSlot) ? selectedSlot : null;
+
+  useEffect(() => {
+    if (!stylistId || totalDuration === 0) return;
+    let cancelled = false;
+    const key = `${stylistId}|${selectedDateIso}|${totalDuration}`;
+    fetch("/api/availability", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stylistId: currentStylistId, date: currentDateIso, totalDurationMinutes: totalDuration }),
-    });
-    const data = await res.json();
-    setSlots(res.ok ? data.slots : []);
-    setLoadingSlots(false);
-  }
-
-  function handlePickDate(newDateIso: string) {
-    setSelectedDateIso(newDateIso);
-    setSlots([]);
-    setSelectedSlot(null);
-    if (stylistId && totalDuration > 0) loadSlots(stylistId, newDateIso);
-  }
-
-  function handlePickStylist(id: string) {
-    setStylistId(id);
-    if (totalDuration > 0) loadSlots(id, selectedDateIso);
-  }
+      body: JSON.stringify({ stylistId, date: selectedDateIso, totalDurationMinutes: totalDuration }),
+    })
+      .then(async (res) => ({ ok: res.ok, data: await res.json() }))
+      .then(({ ok, data }) => {
+        if (!cancelled) setSlotResult({ key, slots: ok ? data.slots : [] });
+      })
+      .catch(() => {
+        if (!cancelled) setSlotResult({ key, slots: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [stylistId, selectedDateIso, totalDuration]);
 
   async function handleSubmit() {
-    if (!stylistId || !selectedSlot || selectedServiceIds.length === 0) return;
+    if (!stylistId || !validSlot || selectedServiceIds.length === 0) return;
     setSubmitting(true);
     setError(null);
     const res = await fetch("/api/appointments", {
@@ -99,7 +97,7 @@ export function NewAppointmentForm({
       body: JSON.stringify({
         stylistId,
         serviceIds: selectedServiceIds,
-        startTime: selectedSlot,
+        startTime: validSlot,
         clientName: name,
         clientPhone: phone,
         notifyClient,
@@ -119,7 +117,7 @@ export function NewAppointmentForm({
       <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-background p-6 sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl italic">Nueva cita</h2>
-          <button onClick={onClose} className="text-sm text-muted">
+          <button onClick={onClose} className="rounded-full border border-border px-4 py-1.5 text-sm">
             Cerrar
           </button>
         </div>
@@ -129,9 +127,9 @@ export function NewAppointmentForm({
           {stylists.map((s) => (
             <button
               key={s.id}
-              onClick={() => handlePickStylist(s.id)}
+              onClick={() => setStylistId(s.id)}
               className={cn(
-                "rounded-full border px-4 py-1.5 text-xs",
+                "rounded-full border px-4 py-2 text-sm",
                 stylistId === s.id ? "border-foreground bg-foreground text-background" : "border-border"
               )}
             >
@@ -142,7 +140,7 @@ export function NewAppointmentForm({
 
         <p className="mb-2 text-xs uppercase tracking-wide text-muted">Fecha</p>
         <div className="mb-4">
-          <DatePicker selectedDateIso={selectedDateIso} todayIso={todayIso} onSelect={handlePickDate} />
+          <DatePicker selectedDateIso={selectedDateIso} todayIso={todayIso} onSelect={setSelectedDateIso} />
           <p className="mt-2 text-center text-xs text-muted">
             {format(new Date(`${selectedDateIso}T00:00:00`), "EEEE d 'de' MMMM", { locale: es })}
           </p>
@@ -172,36 +170,36 @@ export function NewAppointmentForm({
           })}
         </div>
 
-        {stylistId && totalDuration > 0 && slots.length === 0 && !loadingSlots && (
-          <button
-            className="mb-4 text-xs underline underline-offset-4"
-            onClick={() => loadSlots(stylistId, selectedDateIso)}
-          >
-            Buscar horarios disponibles
-          </button>
-        )}
-
-        {loadingSlots && <p className="mb-4 text-sm text-muted">Buscando horarios…</p>}
-
-        {slots.length > 0 && (
-          <div className="mb-4">
-            <p className="mb-2 text-xs uppercase tracking-wide text-muted">Horario</p>
-            <div className="grid grid-cols-4 gap-2">
+        <p className="mb-2 text-xs uppercase tracking-wide text-muted">Horario</p>
+        <div className="mb-4">
+          {!slotsReady && (
+            <p className="rounded-xl bg-muted-bg px-4 py-3 text-sm text-muted">
+              Elige la estilista y al menos un servicio para ver los horarios disponibles.
+            </p>
+          )}
+          {loadingSlots && <p className="py-3 text-sm text-muted">Buscando horarios…</p>}
+          {slots && slots.length === 0 && (
+            <p className="rounded-xl bg-muted-bg px-4 py-3 text-sm text-muted">
+              No hay horarios disponibles ese día. Prueba con otra fecha u otra estilista.
+            </p>
+          )}
+          {slots && slots.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {slots.map((slot) => (
                 <button
                   key={slot}
                   onClick={() => setSelectedSlot(slot)}
                   className={cn(
-                    "rounded-lg border px-2 py-1.5 text-xs",
-                    selectedSlot === slot ? "border-foreground bg-foreground text-background" : "border-border"
+                    "rounded-lg border px-2 py-2.5 text-sm",
+                    validSlot === slot ? "border-foreground bg-foreground text-background" : "border-border"
                   )}
                 >
                   {format(new Date(slot), "h:mm a")}
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="mb-4 space-y-2">
           <input
@@ -232,7 +230,7 @@ export function NewAppointmentForm({
 
         <Button
           className="w-full"
-          disabled={!selectedSlot || name.trim().length < 2 || phone.trim().length < 7 || submitting}
+          disabled={!validSlot || name.trim().length < 2 || phone.trim().length < 7 || submitting}
           onClick={handleSubmit}
         >
           {submitting ? "Creando…" : "Crear cita"}

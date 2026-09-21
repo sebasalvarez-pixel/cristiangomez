@@ -216,7 +216,7 @@ export function AgendaView({
             {upcomingCount === 1 ? "" : "s"} programada{upcomingCount === 1 ? "" : "s"} en los
             próximos 7 días
           </span>
-          <span className="shrink-0 underline underline-offset-4">Ver semana</span>
+          <span className="shrink-0 rounded-full border border-foreground px-3 py-1 text-xs font-medium">Ver semana</span>
         </button>
       )}
 
@@ -277,6 +277,8 @@ function DayAgenda({
   updatingId: string | null;
   onUpdateStatus: (id: string, status: string) => void;
 }) {
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
+
   if (appointments.length === 0) {
     return <p className="py-12 text-center text-sm text-muted">No hay citas este día.</p>;
   }
@@ -294,7 +296,20 @@ function DayAgenda({
                   {format(new Date(appt.end_time), "h:mm a")}
                 </p>
                 <p className="mt-1 text-sm">{appt.clients.full_name}</p>
-                <p className="text-xs text-muted">{appt.clients.phone_e164}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="text-muted">{appt.clients.phone_e164}</span>
+                  <a
+                    href={`https://wa.me/${appt.clients.phone_e164.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-border px-2.5 py-0.5"
+                  >
+                    WhatsApp
+                  </a>
+                  <a href={`tel:${appt.clients.phone_e164}`} className="rounded-full border border-border px-2.5 py-0.5">
+                    Llamar
+                  </a>
+                </div>
                 {isAdmin && (
                   <p className="mt-1 text-xs" style={{ color: appt.stylists.color }}>
                     {appt.stylists.display_name}
@@ -321,23 +336,45 @@ function DayAgenda({
             {total > 0 && <p className="mt-1 text-xs font-medium">{formatCOP(total)}</p>}
 
             {appt.status !== "cancelled" && appt.status !== "completed" && (
-              <div className="mt-4 flex gap-2">
-                <ActionButton
-                  label="Completada"
-                  onClick={() => onUpdateStatus(appt.id, "completed")}
-                  disabled={updatingId === appt.id}
-                />
-                <ActionButton
-                  label="No asistió"
-                  onClick={() => onUpdateStatus(appt.id, "no_show")}
-                  disabled={updatingId === appt.id}
-                />
-                <ActionButton
-                  label="Cancelar"
-                  onClick={() => onUpdateStatus(appt.id, "cancelled")}
-                  disabled={updatingId === appt.id}
-                />
-              </div>
+              confirmingCancelId === appt.id ? (
+                <div className="mt-4 rounded-xl bg-muted-bg px-4 py-3">
+                  <p className="text-sm font-medium">¿Seguro que quieres cancelar esta cita?</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <ActionButton
+                      label="Sí, cancelar cita"
+                      strong
+                      onClick={() => {
+                        setConfirmingCancelId(null);
+                        onUpdateStatus(appt.id, "cancelled");
+                      }}
+                      disabled={updatingId === appt.id}
+                    />
+                    <ActionButton
+                      label="No, volver"
+                      onClick={() => setConfirmingCancelId(null)}
+                      disabled={false}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <ActionButton
+                    label="Completada"
+                    onClick={() => onUpdateStatus(appt.id, "completed")}
+                    disabled={updatingId === appt.id}
+                  />
+                  <ActionButton
+                    label="No asistió"
+                    onClick={() => onUpdateStatus(appt.id, "no_show")}
+                    disabled={updatingId === appt.id}
+                  />
+                  <ActionButton
+                    label="Cancelar"
+                    onClick={() => setConfirmingCancelId(appt.id)}
+                    disabled={updatingId === appt.id}
+                  />
+                </div>
+              )
             )}
           </div>
         );
@@ -476,16 +513,21 @@ function ActionButton({
   label,
   onClick,
   disabled,
+  strong,
 }: {
   label: string;
   onClick: () => void;
   disabled: boolean;
+  strong?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full border border-border px-3 py-1.5 text-xs disabled:opacity-40"
+      className={cn(
+        "rounded-full border px-4 py-2 text-sm disabled:opacity-40",
+        strong ? "border-foreground bg-foreground text-background" : "border-border"
+      )}
     >
       {label}
     </button>
